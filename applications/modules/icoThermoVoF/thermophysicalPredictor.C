@@ -24,7 +24,6 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "icoThermoVoF.H"
-#include "fvcMeshPhi.H"
 #include "fvcDdt.H"
 #include "fvmDiv.H"
 #include "fvmSup.H"
@@ -33,19 +32,26 @@ License
 
 // * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
 
+Foam::tmp<Foam::fvScalarMatrix> Foam::solvers::icoThermoVoF::temperatureEqn()
+{
+    volScalarField& T = mixture_.T();
+
+    return
+    (
+        fvm::ddt(rhoCp, T) + fvm::div(rhoPhiCp, T)
+      - fvm::Sp(fvc::ddt(rhoCp) + fvc::div(rhoPhiCp), T)
+      - fvm::laplacian(thermophysicalTransport.kappaEff(), T)
+    );
+}
+
+
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 void Foam::solvers::icoThermoVoF::thermophysicalPredictor()
 {
     volScalarField& T = mixture_.T();
 
-    T.storePrevIter();
-
-    fvScalarMatrix TEqn
-    (
-        fvm::ddt(rhoCp,T) + fvm::div(rhoPhiCp, T)
-        - fvm::Sp(fvc::ddt(rhoCp) + fvc::div(rhoPhiCp), T)
-        - fvm::laplacian(thermophysicalTransport.kappaEff(), T)
-    );
+    fvScalarMatrix TEqn(temperatureEqn());
 
     TEqn.relax();
 

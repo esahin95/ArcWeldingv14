@@ -30,13 +30,13 @@ Description
     with optional mesh motion and mesh topology changes including adaptive
     re-meshing.
 
-    The momentum and other fluid properties are of the "mixture_" and a single
+    The momentum and other fluid properties are of the "mixture" and a single
     momentum equation is solved.
 
-    Either mixture_ or two-phase transport modelling may be selected.  In the
-    mixture_ approach a single laminar, RAS or LES model is selected to model the
-    momentum stress.  In the Euler-Euler two-phase approach separate laminar,
-    RAS or LES selected models are selected for each of the phases.
+    Either mixture or two-phase transport modelling may be selected.  In the
+    mixture approach a single laminar, RAS or LES model is selected to model
+    the momentum stress.  In the Euler-Euler two-phase approach separate
+    laminar, RAS or LES selected models are selected for each of the phases.
 
     Uses the flexible PIMPLE (PISO-SIMPLE) solution for time-resolved and
     pseudo-transient and steady simulations.
@@ -45,7 +45,7 @@ Description
     in many ways including adding various sources like laser heat source, grey
     body radiation and Boussinesq force.
 
-    Energy equation is build based on icoReactingMultiphaseInterFoam. Alpha
+    The energy equation is built based on icoReactingMultiphaseInterFoam. Alpha
     predictor and pressure corrector are taken from twoPhaseVoFSolver and are
     identical to incompressibleVoF.
 
@@ -86,7 +86,7 @@ protected:
 
     // Phase properties
 
-        //- The compressible two-phase mixture_
+        //- The two-phase mixture
         compressibleTwoPhaseVoFMixture& mixture_;
 
 
@@ -104,13 +104,14 @@ protected:
 
     // Kinematic properties
 
-        // Phase-1 mass-flux
+        //- Phase-1 mass flux
         surfaceScalarField alphaRhoPhi1;
 
-        // Phase-2 mass-flux
+        //- Phase-2 mass flux
         surfaceScalarField alphaRhoPhi2;
 
-    //- Thermophysical properties
+
+    // Thermophysical properties
 
         //- Volumetric heat capacity
         volScalarField rhoCp;
@@ -146,7 +147,7 @@ protected:
         //- The flow is incompressible
         virtual bool incompressible() const
         {
-            return mixture_.incompressible();;
+            return mixture_.incompressible();
         }
 
         //- Is the flow divergent?
@@ -159,7 +160,7 @@ protected:
              || fvModels().addsSupToField(alpha2.name());
         }
 
-        //- Return the mixture_ compressibility/density
+        //- Return the mixture compressibility/density
         //  Not required for incompressible fluids
         virtual tmp<volScalarField> psiByRho() const
         {
@@ -179,6 +180,9 @@ protected:
         {
             return momentumTransport.divDevTau(U);
         }
+
+        //- Return the temperature equation without source terms
+        tmp<fvScalarMatrix> temperatureEqn();
 
 
 public:

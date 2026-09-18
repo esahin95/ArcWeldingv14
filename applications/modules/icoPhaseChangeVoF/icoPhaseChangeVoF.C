@@ -24,8 +24,6 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "icoPhaseChangeVoF.H"
-#include "localEulerDdtScheme.H"
-#include "fvCorrectPhi.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
@@ -80,17 +78,17 @@ Foam::scalar Foam::solvers::icoPhaseChangeVoF::correctPhaseChange()
 {
     const volScalarField& T = mixture_.T();
 
-    // Correct models
-    const scalar res0 = gMax(mag(T.prevIter().v() - T.v())().primitiveField());
-    const scalar res1 = solidificationModel_->correct();
-    const scalar res2 = evaporationModel_->correct();
+    // Change of the temperature and of the phase change models
+    const scalar resT =
+        gMax(mag(T.prevIter().primitiveField() - T.primitiveField()));
+    const scalar resS = solidificationModel_->correct();
+    const scalar resE = evaporationModel_->correct();
 
-    Info<< "resT = " << res0 << " , "
-        << "resS = " << res1 << " , "
-        << "resE = " << res2 << endl;
+    Info<< "resT = " << resT << " , "
+        << "resS = " << resS << " , "
+        << "resE = " << resE << endl;
 
-    // return maximum
-    return max(res1, res2);
+    return max(resS, resE);
 }
 
 

@@ -123,8 +123,8 @@ Foam::solvers::icoThermoVoF::icoThermoVoF(fvMesh& mesh)
     if (!mixture_.incompressible())
     {
         FatalErrorInFunction
-                << "At least one phase is compressible!"
-                << exit(FatalError);
+            << "At least one phase is compressible!"
+            << exit(FatalError);
     }
 
     if (correctPhi || mesh.topoChanging())
@@ -172,37 +172,27 @@ Foam::solvers::icoThermoVoF::~icoThermoVoF()
 
 Foam::scalar Foam::solvers::icoThermoVoF::maxDeltaT() const
 {
-
-    // Diffusion Courant number
+    // Diffusion number: sum of the face conductances relative to the cell
+    // heat capacity
     const scalarField sumDif
     (
         fvc::surfaceSum
         (
             mesh.magSf()
-            * fvc::interpolate(thermophysicalTransport.kappaEff())
-            * mesh.surfaceInterpolation::deltaCoeffs()
+           *fvc::interpolate(thermophysicalTransport.kappaEff())
+           *mesh.surfaceInterpolation::deltaCoeffs()
         )().primitiveField()
     );
 
-    const scalarField sumDiv
-    (
-        (
-            mesh.V() * rho() * Cp()
-        )().primitiveField()
-    );
+    const scalarField sumDiv((mesh.V()*rho()*Cp())().primitiveField());
 
-    const scalar diCoNum =
-        gMax(sumDif / sumDiv) * runTime.deltaTValue();
-
-    const scalar meanDiCoNum =
-        gSum(sumDif) / gSum(sumDiv) * runTime.deltaTValue();
+    const scalar diCoNum = gMax(sumDif/sumDiv)*runTime.deltaTValue();
+    const scalar meanDiCoNum = gSum(sumDif)/gSum(sumDiv)*runTime.deltaTValue();
 
     Info<< "Diffusion Courant Number mean: " << meanDiCoNum
         << " max: " << diCoNum << endl;
 
-    // Recompute maximum time step
-    const scalar maxDiCo =
-        runTime.controlDict().lookup<scalar>("maxDiCo");
+    const scalar maxDiCo = runTime.controlDict().lookup<scalar>("maxDiCo");
 
     scalar deltaT = twoPhaseVoFSolver::maxDeltaT();
 
@@ -213,6 +203,7 @@ Foam::scalar Foam::solvers::icoThermoVoF::maxDeltaT() const
 
     return deltaT;
 }
+
 
 void Foam::solvers::icoThermoVoF::prePredictor()
 {

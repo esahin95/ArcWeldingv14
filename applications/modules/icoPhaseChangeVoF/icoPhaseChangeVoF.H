@@ -77,20 +77,20 @@ class icoPhaseChangeVoF
 
     // Numerical Controls
 
-        // Thermo corrections
+        //- Maximum number of temperature corrections per time step
         const label nThermoCorr_;
 
-        // Thermo tolerance
+        //- Tolerance on the change of the phase change models
         const scalar thermoTol_;
 
 
-    // Private member functions
+    // Private Member Functions
 
-        // Add source terms
+        //- Add the phase change sources to the equation
         template<class Type>
         void addSup(fvMatrix<Type>& eqn) const;
 
-        // Correct phase change models
+        //- Correct the phase change models and return their maximum change
         scalar correctPhaseChange();
 
 
@@ -118,7 +118,8 @@ public:
         //- Construct and optionally solve the momentum equation
         virtual void momentumPredictor();
 
-        //- Construct and solve the energy equation
+        //- Construct and solve the temperature equation, iterating with the
+        //  phase change models until converged
         virtual void thermophysicalPredictor();
 
 

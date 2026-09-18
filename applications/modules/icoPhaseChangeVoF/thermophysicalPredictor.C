@@ -24,33 +24,23 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "icoPhaseChangeVoF.H"
-#include "fvcMeshPhi.H"
-#include "fvcDdt.H"
-#include "fvmDiv.H"
-#include "fvmSup.H"
-#include "fvmLaplacian.H"
-#include "fvcVolumeIntegrate.H"
 
 
-// * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
-
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 void Foam::solvers::icoPhaseChangeVoF::thermophysicalPredictor()
 {
     volScalarField& T = mixture_.T();
 
-    for(label i=0; i<nThermoCorr_; i++)
+    for (label i=0; i<nThermoCorr_; i++)
     {
         T.storePrevIter();
 
         fvScalarMatrix TEqn
         (
-            fvm::ddt(rhoCp,T) + fvm::div(rhoPhiCp, T)
-            - fvm::Sp(fvc::ddt(rhoCp) + fvc::div(rhoPhiCp), T)
-            - fvm::laplacian(thermophysicalTransport.kappaEff(), T)
-            ==
-            fvModels().source(rhoCp, T)
+            temperatureEqn() == fvModels().source(rhoCp, T)
         );
+
         addSup(TEqn);
 
         TEqn.relax();
