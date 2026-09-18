@@ -57,6 +57,7 @@ Foam::tracerParticle::tracerParticle(Istream& is, bool readFields)
     is.check("tracerParticle::tracerParticle(Istream&)");
 }
 
+
 // * * * * * * * * * * * * * * * IOstream Operators  * * * * * * * * * * * * //
 
 Foam::Ostream& Foam::operator<<(Ostream& os, const tracerParticle& p)

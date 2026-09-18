@@ -23,8 +23,6 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "tracerParticle.H"
-
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 inline Foam::tracerParticle::trackingData::trackingData
@@ -41,7 +39,7 @@ inline Foam::tracerParticle::trackingData::trackingData
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 inline Foam::scalar
-Foam::tracerParticle::trackingData::alpha(label celli) const
+Foam::tracerParticle::trackingData::alpha(const label celli) const
 {
     return alpha_[celli];
 }

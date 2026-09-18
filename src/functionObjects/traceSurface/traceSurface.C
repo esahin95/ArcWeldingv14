@@ -24,17 +24,10 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "traceSurface.H"
-#include "fvMesh.H"
-#include "interpolation.H"
-#include "IOmanip.H"
-#include "lineCellFace.H"
-#include "Time.H"
-#include "uniformDimensionedFields.H"
-#include "volFields.H"
-#include "addToRunTimeSelectionTable.H"
-
-#include "Cloud.H"
 #include "tracerParticle.H"
+#include "meshSearch.H"
+#include "IOmanip.H"
+#include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -62,70 +55,66 @@ void Foam::functionObjects::traceSurface::writePositions()
     const volScalarField& alpha =
         mesh_.lookupObject<volScalarField>(alphaName_);
 
-    // Directions of sampling surface
+    // Axes of the sampled rectangle and the ray direction normal to it
     const vector p0 = corners_[0];
     const vector p1 = corners_[1] - corners_[0];
     const vector p2 = corners_[2] - corners_[1];
     const vector d1 = normalised(p1);
     const vector d2 = normalised(p2);
     const vector d3 = normalised(d1 ^ d2);
-    //const scalar h0 = p0 & d3;
 
-    // Step sizes
-    const scalar dx = mag(p1) / scalar(nx_);
-    const scalar dy = mag(p2) / scalar(ny_);
-    const scalar dlx = dx / scalar(ns_);
-    const scalar dly = dy / scalar(ns_);
+    // Tile size and ray spacing within a tile
+    const scalar dx = mag(p1)/scalar(nx_);
+    const scalar dy = mag(p2)/scalar(ny_);
+    const scalar dlx = dx/scalar(ns_);
+    const scalar dly = dy/scalar(ns_);
 
-    // Locations of sampling points
+    // Ray start points in the first tile
     List<vector> locations(ns_*ns_, Zero);
     {
-        scalar x = 0.5*dlx;
         label idx = 0;
+        scalar x = 0.5*dlx;
         for (label i=0; i<ns_; i++)
         {
             scalar y = 0.5*dly;
             for (label j=0; j<ns_; j++)
             {
-                locations[idx] = p0 + x*d1 + y*d2;
+                locations[idx++] = p0 + x*d1 + y*d2;
                 y += dly;
-                idx++;
             }
             x += dlx;
         }
     }
 
-    // Initialise cloud
     const meshSearch& searchEngine = meshSearch::New(mesh());
+
     lagrangian::Cloud<tracerParticle> cloud
     (
         mesh(),
         "TracerCloud",
         IDLList<tracerParticle>()
     );
+
+    tracerParticle::trackingData td(cloud, alpha);
+
     label nLocateBoundaryHits = 0;
 
-    // Construct tracking data
-    tracerParticle::trackingData td
-    (
-        cloud,
-        alpha
-    );
-
-    scalar x = 0.0;
+    scalar x = 0;
     for (label i=0; i<nx_; i++)
     {
-        scalar y = 0.0;
+        scalar y = 0;
         for (label j=0; j<ny_; j++)
         {
+            // Start the rays of this tile on the processors containing them
             cloud.clear();
 
             const vector pc = x*d1 + y*d2;
             forAll(locations, idx)
             {
                 const vector p = locations[idx] + pc;
-                const label cellI = searchEngine.findCell(p);
-                if (cellI > -1)
+                const label celli = searchEngine.findCell(p);
+
+                if (celli != -1)
                 {
                     cloud.addParticle
                     (
@@ -133,7 +122,7 @@ void Foam::functionObjects::traceSurface::writePositions()
                         (
                             searchEngine,
                             p,
-                            cellI,
+                            celli,
                             nLocateBoundaryHits,
                             d3*maxTrackLength_
                         )
@@ -143,45 +132,32 @@ void Foam::functionObjects::traceSurface::writePositions()
 
             cloud.move(cloud, td);
 
-            // Compute layer height
-            scalar s = 0.0;
+            // Layer height of the tile, and the sum of the filled lengths
+            scalar h = 0;
+            scalar sumA = 0;
             forAllConstIter(lagrangian::Cloud<tracerParticle>, cloud, iter)
             {
-                s = max(s, iter().h());
+                h = max(h, iter().h());
+                sumA += iter().a();
             }
-            scalar h = returnReduce(s, maxOp<scalar>());
+            reduce(h, maxOp<scalar>());
 
-            // Compute output
-            scalar out = 0.0;
-            switch (output_)
+            scalar out = h;
+
+            // Fill fraction: mean filled length relative to the layer height
+            if (output_ == outputType::fillFraction)
             {
-                case outputType::layerHeight:
-                {
-                    out = h;
-                    break;
-                }
+                const label nRays = returnReduce(cloud.size(), sumOp<label>());
+                reduce(sumA, sumOp<scalar>());
 
-                case outputType::fillFraction:
-                {
-                    scalar s = 0.0;
-                    forAllConstIter(lagrangian::Cloud<tracerParticle>, cloud, iter)
-                    {
-                        s += iter().a();
-                    }
-                    label nRays = returnReduce(cloud.size(), sumOp<label>());
-                    out = returnReduce(s, sumOp<scalar>());
-                    out = h > 0.0 ? out/scalar(nRays)/h : 0.0;
-                    break;
-                }
+                out = h > 0 ? sumA/scalar(nRays)/h : 0;
             }
 
             if (Pstream::master())
             {
-                const Foam::Omanip<int> w = valueWidth(1);
+                const Omanip<int> w = valueWidth(1);
 
-                file() << w << x+0.5*dx
-                       << w << y+0.5*dy
-                       << w << out;
+                file() << w << x + 0.5*dx << w << y + 0.5*dy << w << out;
                 file().endl();
             }
 
@@ -199,7 +175,7 @@ void Foam::functionObjects::traceSurface::writeFileHeader(const label i)
 {
     writeHeaderValue(file(), "traced surface for ", alphaName_);
 
-    const Foam::Omanip<int> w = valueWidth(1);
+    const Omanip<int> w = valueWidth(1);
     file() << w << "# x" << w << "y" << w << "out";
     file().endl();
 }
@@ -238,7 +214,6 @@ Foam::functionObjects::traceSurface::~traceSurface()
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-
 Foam::wordList Foam::functionObjects::traceSurface::fields() const
 {
     return wordList(alphaName_);
@@ -246,12 +221,6 @@ Foam::wordList Foam::functionObjects::traceSurface::fields() const
 
 
 bool Foam::functionObjects::traceSurface::execute()
-{
-    return true;
-}
-
-
-bool Foam::functionObjects::traceSurface::end()
 {
     return true;
 }

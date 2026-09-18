@@ -54,7 +54,7 @@ SourceFiles
 
 #include "fvMeshFunctionObject.H"
 #include "logFiles.H"
-
+#include "NamedEnum.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -64,7 +64,7 @@ namespace functionObjects
 {
 
 /*---------------------------------------------------------------------------*\
-                       Class traceSurface Declaration
+                        Class traceSurface Declaration
 \*---------------------------------------------------------------------------*/
 
 class traceSurface
@@ -72,41 +72,44 @@ class traceSurface
     public fvMeshFunctionObject,
     public logFiles
 {
-    // Private enumeration
+    // Private Data
 
-        //- Output enumeration
+        //- Output quantities
         enum class outputType
         {
             layerHeight,
             fillFraction
         };
 
-        //- Output enumeration names
+        //- Output quantity names
         static const NamedEnum<outputType, 2> outputTypeNames_;
 
-    // Private Data
-
-        //- Name of the alpha field
+        //- Name of the phase fraction field
         const word alphaName_;
 
-        //- Area to sample
+        //- Corners of the sampled rectangle: the first two span its
+        //  x-direction, the second and third its y-direction
         const List<vector> corners_;
 
-        //- Discretization
+        //- Number of tiles in the x-direction
         const label nx_;
+
+        //- Number of tiles in the y-direction
         const label ny_;
+
+        //- Number of rays per tile in each direction
         const label ns_;
 
-        //- Track length
+        //- Maximum ray length
         const scalar maxTrackLength_;
 
-        //- Output type
+        //- Output quantity
         const outputType output_;
 
 
     // Private Member Functions
 
-        //- Output positions
+        //- Trace the rays and write the output quantity of each tile
         void writePositions();
 
 
@@ -144,11 +147,8 @@ public:
         //- Return the list of fields required
         virtual wordList fields() const;
 
-        //- Execute
+        //- Execute; does nothing
         virtual bool execute();
-
-        //- Execute at the final time-loop
-        virtual bool end();
 
         //- Write
         virtual bool write();

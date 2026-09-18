@@ -39,18 +39,18 @@ Foam::tracerParticle::tracerParticle
 (
     const meshSearch& searchEngine,
     const vector& position,
-    const label cellI,
+    const label celli,
     label& nLocateBoundaryHits,
     const vector& direction
 )
 :
-    particle(searchEngine, position, cellI, nLocateBoundaryHits),
-    h_(0.0),
+    particle(searchEngine, position, celli, nLocateBoundaryHits),
+    h_(0),
     d_(direction),
-    a_(0.0),
-    s_(0.0)
+    a_(0),
+    s_(0)
 {
-    reset(0.0);
+    reset(0);
 }
 
 
@@ -65,25 +65,19 @@ bool Foam::tracerParticle::move
     td.keepParticle = true;
     td.sendToProc = -1;
 
-    while
-    (
-        td.keepParticle && td.sendToProc == -1 && stepFraction() < 1
-    )
+    while (td.keepParticle && td.sendToProc == -1 && stepFraction() < 1)
     {
-        // Start position
-        const vector pos0 = this->position(td.mesh);
-        const label celli = cell();
-        const scalar alpha = td.alpha(celli);
+        const vector pos0 = position(td.mesh);
+        const scalar alpha = td.alpha(cell());
 
-        // Track to new face and cell
+        // Track to the next face
         trackToAndHitFace(d_, 1.0, cloud, td);
-        const vector pos = this->position(td.mesh);
-        const scalar ds = mag(pos - pos0);
+
+        const scalar ds = mag(position(td.mesh) - pos0);
 
         s_ += ds;
         a_ += alpha*ds;
 
-        // Update max height
         if (alpha >= 0.5)
         {
             h_ = s_;
@@ -93,22 +87,24 @@ bool Foam::tracerParticle::move
     return td.keepParticle;
 }
 
+
 void Foam::tracerParticle::hitBasicPatch
 (
-    lagrangian::Cloud<tracerParticle>& cloud,
-    trackingData& td
+    lagrangian::Cloud<tracerParticle>&,
+    trackingData&
 )
 {
-    stepFraction() = 1.0;
+    stepFraction() = 1;
 }
+
 
 void Foam::tracerParticle::hitWallPatch
 (
-    lagrangian::Cloud<tracerParticle>& cloud,
-    trackingData& td
+    lagrangian::Cloud<tracerParticle>&,
+    trackingData&
 )
 {
-    stepFraction() = 1.0;
+    stepFraction() = 1;
 }
 
 

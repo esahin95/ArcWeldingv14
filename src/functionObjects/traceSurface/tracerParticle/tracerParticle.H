@@ -25,7 +25,13 @@ Class
     Foam::tracerParticle
 
 Description
-    Laser particle class with coupling to the phase field.
+    Ray of the traceSurface function object, tracked through the mesh as a
+    particle.
+
+    Along its track the ray accumulates the travelled distance, the integral
+    of the phase fraction and the layer height: the distance to the exit of
+    the last cell with a phase fraction of at least 0.5. The ray stops at
+    the first wall or other non-coupled boundary.
 
 SourceFiles
     tracerParticleI.H
@@ -39,10 +45,8 @@ SourceFiles
 
 #include "particle.H"
 #include "Cloud.H"
-#include "IOstream.H"
 #include "volFields.H"
 #include "contiguous.H"
-
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -50,14 +54,11 @@ namespace Foam
 {
 
 // Forward declaration of friend functions and operators
-
 class tracerParticle;
-
 Ostream& operator<<(Ostream&, const tracerParticle&);
 
-
 /*---------------------------------------------------------------------------*\
-                        Class tracerParticle Declaration
+                       Class tracerParticle Declaration
 \*---------------------------------------------------------------------------*/
 
 class tracerParticle
@@ -69,16 +70,17 @@ class tracerParticle
         //- Size in bytes of the fields
         static const std::size_t sizeofFields_;
 
-        //- Layer height
+        //- Layer height, the distance to the exit of the last cell with
+        //  alpha >= 0.5
         scalar h_;
 
-        //- Direction
+        //- Displacement over the maximum track length
         vector d_;
 
-        //- Filled fraction
+        //- Integral of the phase fraction along the track
         scalar a_;
 
-        //- Distance travelled along track
+        //- Distance travelled
         scalar s_;
 
 
@@ -92,9 +94,8 @@ public:
     :
         public particle::trackingData
     {
-        // Interpolators for continuous phase fields
-
-            const volScalarField& alpha_;
+        //- Phase fraction
+        const volScalarField& alpha_;
 
     public:
 
@@ -109,7 +110,8 @@ public:
 
         // Member Functions
 
-            inline scalar alpha(label celli) const;
+            //- Return the phase fraction of the given cell
+            inline scalar alpha(const label celli) const;
     };
 
 
@@ -119,12 +121,13 @@ public:
 
     // Constructors
 
-        //- Construct from components
+        //- Construct from position and cell, and the displacement over the
+        //  maximum track length
         tracerParticle
         (
             const meshSearch& searchEngine,
             const vector& position,
-            const label cellI,
+            const label celli,
             label& nLocateBoundaryHits,
             const vector& direction
         );
@@ -141,31 +144,40 @@ public:
 
     // Member Functions
 
-
         // Tracking
 
-            //- Move
+            //- Track the ray, accumulating the layer height and the
+            //  integral of the phase fraction
             bool move(lagrangian::Cloud<tracerParticle>&, trackingData&);
 
-            //- Height
+            //- Return the layer height
             scalar h() const
             {
                 return h_;
             }
 
-            //- Fill fraction
+            //- Return the integral of the phase fraction along the track
             scalar a() const
             {
                 return a_;
             }
 
+
         // Patch interactions
 
-            //- Overridable function to handle the particle hitting a basic Patch
-            void hitBasicPatch(lagrangian::Cloud<tracerParticle>& cloud, trackingData& td);
+            //- Stop the ray on hitting a non-coupled patch
+            void hitBasicPatch
+            (
+                lagrangian::Cloud<tracerParticle>& cloud,
+                trackingData& td
+            );
 
-            //- Overridable function to handle the particle hitting a wallPatch
-            void hitWallPatch(lagrangian::Cloud<tracerParticle>& cloud, trackingData& td);
+            //- Stop the ray on hitting a wall
+            void hitWallPatch
+            (
+                lagrangian::Cloud<tracerParticle>& cloud,
+                trackingData& td
+            );
 
 
     // Ostream Operator
