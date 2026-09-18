@@ -100,7 +100,7 @@ void Foam::functionObjects::traceSurface::writePositions()
     lagrangian::Cloud<tracerParticle> cloud
     (
         mesh(),
-        "DTRMCloud",
+        "TracerCloud",
         IDLList<tracerParticle>()
     );
     label nLocateBoundaryHits = 0;
@@ -125,27 +125,31 @@ void Foam::functionObjects::traceSurface::writePositions()
             {
                 const vector p = locations[idx] + pc;
                 const label cellI = searchEngine.findCell(p);
-                cloud.addParticle
-                (
-                    new tracerParticle
+                if (cellI > -1)
+                {
+                    cloud.addParticle
                     (
-                        searchEngine,
-                        p,
-                        cellI,
-                        nLocateBoundaryHits,
-                        d3*maxTrackLength_
-                    )
-                );
+                        new tracerParticle
+                        (
+                            searchEngine,
+                            p,
+                            cellI,
+                            nLocateBoundaryHits,
+                            d3*maxTrackLength_
+                        )
+                    );
+                }
             }
 
             cloud.move(cloud, td);
 
             // Compute layer height
-            scalar h = 0.0;
+            scalar s = 0.0;
             forAllConstIter(lagrangian::Cloud<tracerParticle>, cloud, iter)
             {
-                h = max(h, iter().h());
+                s = max(s, iter().h());
             }
+            scalar h = returnReduce(s, maxOp<scalar>());
 
             // Compute output
             scalar out = 0.0;
@@ -159,11 +163,14 @@ void Foam::functionObjects::traceSurface::writePositions()
 
                 case outputType::fillFraction:
                 {
+                    scalar s = 0.0;
                     forAllConstIter(lagrangian::Cloud<tracerParticle>, cloud, iter)
                     {
-                        out += iter().a();
+                        s += iter().a();
                     }
-                    out /= scalar(ns_*ns_) * (h + 1e-6);
+                    label nRays = returnReduce(cloud.size(), sumOp<label>());
+                    out = returnReduce(s, sumOp<scalar>());
+                    out = h > 0.0 ? out/scalar(nRays)/h : 0.0;
                     break;
                 }
             }
@@ -193,7 +200,7 @@ void Foam::functionObjects::traceSurface::writeFileHeader(const label i)
     writeHeaderValue(file(), "traced surface for ", alphaName_);
 
     const Foam::Omanip<int> w = valueWidth(1);
-    file() << w << "# x" << w << "y" << w << "h";
+    file() << w << "# x" << w << "y" << w << "out";
     file().endl();
 }
 

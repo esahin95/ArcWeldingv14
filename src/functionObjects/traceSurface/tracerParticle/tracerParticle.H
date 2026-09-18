@@ -40,8 +40,6 @@ SourceFiles
 #include "particle.H"
 #include "Cloud.H"
 #include "IOstream.H"
-//#include "autoPtr.H"
-//#include "interpolationCellPoint.H"
 #include "volFields.H"
 #include "contiguous.H"
 
@@ -79,6 +77,9 @@ class tracerParticle
 
         //- Filled fraction
         scalar a_;
+
+        //- Distance travelled along track
+        scalar s_;
 
 
 public:
@@ -160,8 +161,11 @@ public:
 
         // Patch interactions
 
-            //- Overridable function to handle the particle hitting a wallPatch
+            //- Overridable function to handle the particle hitting a basic Patch
             void hitBasicPatch(lagrangian::Cloud<tracerParticle>& cloud, trackingData& td);
+
+            //- Overridable function to handle the particle hitting a wallPatch
+            void hitWallPatch(lagrangian::Cloud<tracerParticle>& cloud, trackingData& td);
 
 
     // Ostream Operator
