@@ -30,16 +30,11 @@ License
 
 namespace Foam
 {
-    namespace reflectionModels
-    {
-        defineTypeNameAndDebug(fresnelLaser, 0);
-        addToRunTimeSelectionTable
-        (
-            reflectionModel,
-            fresnelLaser,
-            dictionary
-        );
-    }
+namespace reflectionModels
+{
+    defineTypeNameAndDebug(fresnelLaser, 0);
+    addToRunTimeSelectionTable(reflectionModel, fresnelLaser, dictionary);
+}
 }
 
 
@@ -54,25 +49,25 @@ Foam::reflectionModels::fresnelLaser::fresnelLaser
     reflectionModel(dict, mesh),
     epsilon_(dict.lookup<scalar>("epsilon"))
 {
-    DebugInfo<< "Model constant set to epsilon = " << epsilon_ <<endl;
-    DebugInfo<< "Normal incidence reflectivity R = " << rho(1.0) << endl;
+    DebugInfo
+        << "Model constant set to epsilon = " << epsilon_ << nl
+        << "Normal incidence reflectivity R = " << rho(1.0) << endl;
 }
 
 
-// * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
-
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 Foam::scalar Foam::reflectionModels::fresnelLaser::rho
 (
     const scalar cosTheta
 ) const
 {
-    return 0.5 *
+    return 0.5*
         (
-            (1 + Foam::sqr(1 - epsilon_ * cosTheta))
-          / (1 + Foam::sqr(1 + epsilon_ * cosTheta))
-          + (Foam::sqr(epsilon_ - cosTheta) + Foam::sqr(cosTheta))
-          / (Foam::sqr(epsilon_ + cosTheta) + Foam::sqr(cosTheta))
+            (1 + sqr(1 - epsilon_*cosTheta))
+           /(1 + sqr(1 + epsilon_*cosTheta))
+          + (sqr(epsilon_ - cosTheta) + sqr(cosTheta))
+           /(sqr(epsilon_ + cosTheta) + sqr(cosTheta))
         );
 }
 

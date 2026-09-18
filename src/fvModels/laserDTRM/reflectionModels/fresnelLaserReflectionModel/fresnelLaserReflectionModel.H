@@ -22,9 +22,22 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::fresnelReflection
+    Foam::reflectionModels::fresnelLaser
 
 Description
+    Reflectivity from the simplified Fresnel formula used in laser
+    processing of metals, with the material constant epsilon:
+
+        rho = 0.5*((1 + (1 - e*c)^2)/(1 + (1 + e*c)^2)
+                 + (e^2 - 2*e*c + 2*c^2)/(e^2 + 2*e*c + 2*c^2))
+
+    where e = epsilon and c is the cosine of the angle of incidence.
+
+Usage
+    \table
+        Property | Description       | Required | Default
+        epsilon  | Material constant | yes      |
+    \endtable
 
 SourceFiles
     fresnelLaserReflectionModel.C
@@ -43,9 +56,8 @@ namespace Foam
 namespace reflectionModels
 {
 
-
 /*---------------------------------------------------------------------------*\
-                          Class fresnelLaserReflection Declaration
+                         Class fresnelLaser Declaration
 \*---------------------------------------------------------------------------*/
 
 class fresnelLaser
@@ -54,24 +66,20 @@ class fresnelLaser
 {
     // Private Data
 
-        //- constant reflectivity
+        //- Material constant of the Fresnel formula
         const scalar epsilon_;
 
 
 public:
 
     //- Runtime type information
-    TypeName("fresnelLaser")
+    TypeName("fresnelLaser");
 
 
     // Constructors
 
-        //- Construct from components
-        fresnelLaser
-        (
-            const dictionary& dict,
-            const fvMesh& mesh
-        );
+        //- Construct from dictionary and mesh
+        fresnelLaser(const dictionary& dict, const fvMesh& mesh);
 
         //- Disallow default bitwise copy construction
         fresnelLaser(const fresnelLaser&) = delete;
@@ -84,8 +92,8 @@ public:
 
     // Member Functions
 
-        // Reflectivity
-        virtual scalar rho(const scalar incidentAngle) const;
+        //- Return the reflectivity for the cosine of the angle of incidence
+        virtual scalar rho(const scalar cosTheta) const;
 
 
     // Member Operators
@@ -93,7 +101,6 @@ public:
         //- Disallow default bitwise assignment
         void operator=(const fresnelLaser&) = delete;
 };
-
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

@@ -22,9 +22,21 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::fresnelReflection
+    Foam::reflectionModels::fresnelLorentzDrude
 
 Description
+    Reflectivity from the Fresnel equations for an absorbing medium, with the
+    complex refractive index from the Drude free-electron model for the
+    given free electron density, electrical conductivity and laser
+    wavelength.
+
+Usage
+    \table
+        Property | Description                   | Required | Default
+        N        | Free electron density [1/m^3] | yes      |
+        lambda   | Laser wavelength [m]          | yes      |
+        sigma    | Electrical conductivity [S/m] | yes      |
+    \endtable
 
 SourceFiles
     fresnelLorentzDrudeReflectionModel.C
@@ -44,9 +56,8 @@ namespace Foam
 namespace reflectionModels
 {
 
-
 /*---------------------------------------------------------------------------*\
-                          Class fresnelLorentzDrudeReflection Declaration
+                     Class fresnelLorentzDrude Declaration
 \*---------------------------------------------------------------------------*/
 
 class fresnelLorentzDrude
@@ -61,27 +72,26 @@ class fresnelLorentzDrude
         //- Laser wavelength
         const dimensionedScalar lambda_;
 
-        //- Medium electric conductivity
+        //- Electrical conductivity
         const dimensionedScalar sigma_;
 
-        //- Medium complex reflective index
+        //- Complex refractive index, real part
         scalar n_;
+
+        //- Complex refractive index, imaginary part
         scalar k_;
+
 
 public:
 
     //- Runtime type information
-    TypeName("fresnelLorentzDrude")
+    TypeName("fresnelLorentzDrude");
 
 
     // Constructors
 
-        //- Construct from components
-        fresnelLorentzDrude
-        (
-            const dictionary& dict,
-            const fvMesh& mesh
-        );
+        //- Construct from dictionary and mesh
+        fresnelLorentzDrude(const dictionary& dict, const fvMesh& mesh);
 
         //- Disallow default bitwise copy construction
         fresnelLorentzDrude(const fresnelLorentzDrude&) = delete;
@@ -94,8 +104,8 @@ public:
 
     // Member Functions
 
-        // Reflectivity
-        virtual scalar rho(const scalar incidentAngle) const;
+        //- Return the reflectivity for the cosine of the angle of incidence
+        virtual scalar rho(const scalar cosTheta) const;
 
 
     // Member Operators
@@ -103,7 +113,6 @@ public:
         //- Disallow default bitwise assignment
         void operator=(const fresnelLorentzDrude&) = delete;
 };
-
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

@@ -30,18 +30,13 @@ License
 
 namespace Foam
 {
-    namespace powerModels
-    {
-        defineTypeNameAndDebug(random, 0);
-        addToRunTimeSelectionTable
-        (
-            powerModel,
-            random,
-            dictionary
-        );
+namespace powerModels
+{
+    defineTypeNameAndDebug(random, 0);
+    addToRunTimeSelectionTable(powerModel, random, dictionary);
 
-        randomGenerator random::rndGen_(261782, true);
-    }
+    randomGenerator random::rndGen_(261782, true);
+}
 }
 
 
@@ -54,60 +49,47 @@ Foam::powerModels::random::random
 )
 :
     powerModel(dict, mesh),
-
     nRays_(dict.lookup<scalar>("nRays")),
-
-    powerDist_
-    (
-        Function1<scalar>::New
-        (
-            "powerDist",
-            dimless,
-            dimless,
-            dict
-        )
-    )
+    powerDist_(Function1<scalar>::New("powerDist", dimless, dimless, dict))
 {
-    // Resize lists
     positions_.resize(nRays_);
     powers_.resize(nRays_);
+
+    // All rays carry the same power
+    powers_ = Q_/nRays_;
 }
 
 
-// * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 void Foam::powerModels::random::initialise()
 {
-    // Current laser position
     const vector centre = pos_->value(mesh_.time().value());
-    //const vector centre = pos_->value(0.0);
 
-    // Right handed CS
+    // Right-handed coordinate system in the beam cross-section
     const vector t1 = normalised(perpendicular(normal_));
     const vector t2 = normalised(normal_ ^ t1);
 
     forAll(positions_, i)
     {
-        // Rejection sampling from arbitrary distribution
+        // Rejection sampling from the radial power profile
         vector delta;
         scalar deltaMag;
         do
         {
             delta =
-                  t1*rndGen_.scalarAB(-rad_, rad_)
-                + t2*rndGen_.scalarAB(-rad_, rad_);
+                t1*rndGen_.scalarAB(-rad_, rad_)
+              + t2*rndGen_.scalarAB(-rad_, rad_);
 
             deltaMag = mag(delta);
         }
         while
         (
-            deltaMag > rad_ ||
-            rndGen_.scalar01() > powerDist_->value(deltaMag)
+            deltaMag > rad_
+         || rndGen_.scalar01() > powerDist_->value(deltaMag)
         );
-        positions_[i] = centre + delta;
 
-        // Constant power per ray
-        powers_[i] = Q_ / nRays_;
+        positions_[i] = centre + delta;
     }
 }
 

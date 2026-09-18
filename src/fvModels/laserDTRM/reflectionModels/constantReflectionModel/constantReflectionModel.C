@@ -30,16 +30,11 @@ License
 
 namespace Foam
 {
-    namespace reflectionModels
-    {
-        defineTypeNameAndDebug(constant, 0);
-        addToRunTimeSelectionTable
-        (
-            reflectionModel,
-            constant,
-            dictionary
-        );
-    }
+namespace reflectionModels
+{
+    defineTypeNameAndDebug(constant, 0);
+    addToRunTimeSelectionTable(reflectionModel, constant, dictionary);
+}
 }
 
 
@@ -54,17 +49,13 @@ Foam::reflectionModels::constant::constant
     reflectionModel(dict, mesh),
     rho_(dict.lookup<scalar>("rho"))
 {
-    DebugInfo<< "Reflectivity set to rho = " << rho_ <<endl;
+    DebugInfo<< "Reflectivity set to rho = " << rho_ << endl;
 }
 
 
-// * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-
-Foam::scalar Foam::reflectionModels::constant::rho
-(
-    const scalar cosTheta
-) const
+Foam::scalar Foam::reflectionModels::constant::rho(const scalar) const
 {
     return rho_;
 }

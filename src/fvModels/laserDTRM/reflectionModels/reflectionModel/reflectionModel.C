@@ -41,12 +41,10 @@ Foam::reflectionModel::reflectionModel
     const dictionary& dict,
     const fvMesh& mesh
 )
-:
-    mesh_(mesh)
 {}
 
 
-// * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 Foam::vector Foam::reflectionModel::R
 (
@@ -54,7 +52,7 @@ Foam::vector Foam::reflectionModel::R
     const vector& n
 ) const
 {
-    return normalised(incident - 2.0 * (n & incident) * n);
+    return normalised(incident - 2.0*(n & incident)*n);
 }
 
 

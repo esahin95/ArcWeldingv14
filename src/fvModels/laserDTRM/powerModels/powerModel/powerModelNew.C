@@ -25,8 +25,7 @@ License
 
 #include "powerModel.H"
 
-
-// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * * //
 
 Foam::autoPtr<Foam::powerModel> Foam::powerModel::New
 (

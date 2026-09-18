@@ -30,10 +30,75 @@ License
 namespace Foam
 {
     defineTypeNameAndDebug(DTRMParticle, 0);
+}
 
-    label DTRMParticle::nParticles = 0;
+Foam::label Foam::DTRMParticle::nTracks = 0;
 
-    scalar DTRMParticle::qLost = 0.0;
+Foam::scalar Foam::DTRMParticle::qLost = 0;
+
+
+// * * * * * * * * * * * * * * * Local Constants * * * * * * * * * * * * * * //
+
+namespace
+{
+    //- Tolerance on the phase fraction when locating the interface
+    const Foam::scalar alphaTol = 1e-2;
+
+    //- Maximum number of iterations locating the interface
+    const Foam::label maxInterfaceIter = 20;
+
+    //- Fraction of the initial power below which a ray is no longer traced
+    const Foam::scalar qMinFraction = 0.01;
+
+    //- Step length below which a step is considered to have made no progress
+    const Foam::scalar dsMin = 1e-10;
+}
+
+
+// * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
+
+Foam::scalar Foam::DTRMParticle::locateInterface
+(
+    const vector& p0,
+    const vector& dx,
+    const label celli,
+    const scalar alpha0,
+    const scalar alpha1,
+    const trackingData& td
+)
+{
+    scalar a = 0, fa = alpha0 - 0.5;
+    scalar b = 1, fb = alpha1 - 0.5;
+    scalar c = 0, fc = fa;
+
+    label i = 0;
+    while (mag(fc) > alphaTol && i < maxInterfaceIter)
+    {
+        i++;
+
+        c = (a*fb - b*fa)/(fb - fa);
+
+        locate(td.searchEngine(), p0 + c*dx, celli);
+        fc = interpolate(td.alphaInterp(), td.mesh) - 0.5;
+
+        if (fc*fa > 0)
+        {
+            a = c;
+            fa = fc;
+        }
+        else
+        {
+            b = c;
+            fb = fc;
+        }
+    }
+
+    if (i >= maxInterfaceIter)
+    {
+        DebugInfo<< "Failed search: " << alpha0 << " -> " << fc + 0.5 << endl;
+    }
+
+    return c;
 }
 
 
@@ -43,21 +108,21 @@ Foam::DTRMParticle::DTRMParticle
 (
     const meshSearch& searchEngine,
     const vector& position,
-    const label cellI,
+    const label celli,
     label& nLocateBoundaryHits,
     const vector& direction,
     const scalar power,
     const bool transmissive
 )
 :
-    particle(searchEngine, position, cellI, nLocateBoundaryHits),
+    particle(searchEngine, position, celli, nLocateBoundaryHits),
     q0_(power),
-    trackIndex_(nParticles++),
+    trackIndex_(nTracks++),
     q_(power),
     d_(direction),
     transmissive_(transmissive)
 {
-    this->reset(0.0);
+    reset(0);
 }
 
 
@@ -72,174 +137,116 @@ bool Foam::DTRMParticle::move
     td.keepParticle = true;
     td.sendToProc = -1;
 
-    // Initial position
-    td.append
-    (
-        this->position(td.mesh),
-        trackIndex_,
-        q_
-    );
+    td.append(position(td.mesh), trackIndex_, q_);
 
     while
     (
-        q_ > 0.01 * q0_ &&
-        td.keepParticle && td.sendToProc == -1 && stepFraction() < 1
+        q_ > qMinFraction*q0_
+     && td.keepParticle && td.sendToProc == -1 && stepFraction() < 1
     )
     {
-        // Initial data
-        const tetIndices oldTetIs = this->currentTetIndices(td.mesh);
-        const scalar oldAlpha = td.alphaInterp().interpolate
-            (
-                this->coordinates(),
-                oldTetIs
-            );
-        const scalar oldAbsorp = td.absorpInterp().interpolate
-            (
-                this->coordinates(),
-                oldTetIs
-            );
-        const label oldCell = this->cell();
-        const vector oldPos = this->position(td.mesh);
+        // State at the start of the step
+        const scalar oldAlpha = interpolate(td.alphaInterp(), td.mesh);
+        const scalar oldAbsorp = interpolate(td.absorpInterp(), td.mesh);
+        const label oldCell = cell();
+        const vector oldPos = position(td.mesh);
 
-        const scalar TOL = 1e-2;
-        if (transmissive_ && oldAlpha < 0.5 - TOL)
+        if (transmissive_ && oldAlpha < 0.5 - alphaTol)
         {
-            DebugInfo<< "Give up transmissive ray inside material"<<endl;
+            DebugInfo<< "Give up transmissive ray inside material" << endl;
             qLost += q_;
             td.keepParticle = false;
             continue;
         }
 
-        // Track to new face and cell
+        // Track to the next face
         trackToAndHitFace(d_, 1.0, cloud, td);
 
-        // New data
-        const tetIndices tetIs = this->currentTetIndices(td.mesh);
-        const scalar alpha = td.alphaInterp().interpolate
-            (
-                this->coordinates(),
-                tetIs
-            );
-        const vector pos = this->position(td.mesh);
-
-        // Distance traveled by ray
+        const scalar alpha = interpolate(td.alphaInterp(), td.mesh);
+        const vector pos = position(td.mesh);
         const vector dx = pos - oldPos;
         const scalar ds = mag(dx);
-        if (ds < 1e-10)
+
+        // Skip steps which made no progress
+        if (ds < dsMin)
         {
-            continue; // Temporary fix
+            continue;
         }
 
-        // Check for reflection
-        if
-        (
-            oldAlpha >= 0.5 && alpha < 0.5 && transmissive_
-        )
+        // On entering the absorbing phase split off the reflected ray
+        if (oldAlpha >= 0.5 && alpha < 0.5 && transmissive_)
         {
             transmissive_ = false;
 
-            // Create new reflected particle
-            const meshSearch& searchEngine = td.searchEngine();
             label nLocateBoundaryHits = 0;
-            DTRMParticle* pPtr = new
-                DTRMParticle
+            autoPtr<DTRMParticle> reflected
+            (
+                new DTRMParticle
                 (
-                    searchEngine,
+                    td.searchEngine(),
                     oldPos,
                     oldCell,
                     nLocateBoundaryHits,
                     d_,
                     q0_,
                     true
-                );
+                )
+            );
 
-            // Track reflected particle to interface
-            scalar a = 0, fa = oldAlpha - 0.5;
-            scalar b = 1, fb = alpha - 0.5;
-            scalar c = 0, fc = fa;
-            label i = 0, MAX = 20;
-            while (mag(fc) > TOL && i < MAX)
-            {
-                i++;
+            const scalar c = reflected->locateInterface
+            (
+                oldPos,
+                dx,
+                oldCell,
+                oldAlpha,
+                alpha,
+                td
+            );
 
-                c = (a*fb - b*fa) / (fb - fa);
-                const vector p = oldPos + c * dx;
+            // Interface normal, pointing into the transparent phase
+            const vector gradAlpha =
+                reflected->interpolate(td.gradAlphaInterp(), td.mesh);
+            const vector nHat = gradAlpha/mag(gradAlpha);
 
-                pPtr->locate(searchEngine, p, oldCell);
-                fc = td.alphaInterp().interpolate
-                    (
-                        pPtr->coordinates(),
-                        pPtr->currentTetIndices(td.mesh)
-                    ) - 0.5;
-
-                if (fc * fa > 0)
-                {
-                    a = c;
-                    fa = fc;
-                }
-                else
-                {
-                    b = c;
-                    fb = fc;
-                }
-            }
-            if (i >= MAX)
-            {
-                DebugInfo<<"Failed search: "
-                         << oldAlpha << " -> " << fc+0.5
-                         << endl;
-            }
-
-            // Interface unit normal vector
-            const vector gradAlpha = td.gradAlphaInterp().interpolate
-                (
-                    pPtr->coordinates(),
-                    pPtr->currentTetIndices(td.mesh)
-                );
-            const vector nHat = gradAlpha / mag(gradAlpha);
-
-            // Distribute power according to reflectivity
+            // Split the power according to the reflectivity
             const scalar cosTheta = -nHat & d_;
-            pPtr->d_ = td.reflection().R(d_, nHat);
-            pPtr->q_ = td.reflection().rho(cosTheta) * q_;
-            q_ -= pPtr->q_;
-            if (cosTheta < 0.0)
+            reflected->d_ = td.reflection().R(d_, nHat);
+            reflected->q_ = td.reflection().rho(cosTheta)*q_;
+            q_ -= reflected->q_;
+
+            if (cosTheta < 0)
             {
-                DebugInfo<< "Give up particle with negative angle" << endl;
-                DebugInfo<< ds << " " << oldAlpha << " " << alpha << " " << (gradAlpha & d_) << " " << c << endl;
-                qLost += q_ + pPtr->q_;
+                DebugInfo
+                    << "Give up particle with negative angle" << nl
+                    << ds << " " << oldAlpha << " " << alpha << " "
+                    << (gradAlpha & d_) << " " << c << endl;
+
+                qLost += q_ + reflected->q_;
                 td.keepParticle = false;
-                delete pPtr;
                 continue;
             }
 
-            // Add new particle to cloud
-            cloud.addParticle(pPtr);
+            cloud.addParticle(reflected.ptr());
         }
 
-        // Laser power absorption in ray
+        // Absorption along the step
         if (!transmissive_)
         {
-            const scalar qAbsorped = max(min(ds * oldAbsorp, 1.0), 0.0) * q_;
-            td.Q(oldCell) += qAbsorped;
-            q_ -= qAbsorped;
+            const scalar qAbsorbed = max(min(ds*oldAbsorp, 1.0), 0.0)*q_;
+            td.Q(oldCell) += qAbsorbed;
+            q_ -= qAbsorbed;
         }
 
-        // New position
-        td.append
-        (
-            pos,
-            trackIndex_,
-            q_
-        );
+        td.append(pos, trackIndex_, q_);
     }
 
     return td.keepParticle;
 }
 
+
 void Foam::DTRMParticle::hitWallPatch
 (
-    lagrangian::Cloud<DTRMParticle>& cloud,
+    lagrangian::Cloud<DTRMParticle>&,
     trackingData& td
 )
 {

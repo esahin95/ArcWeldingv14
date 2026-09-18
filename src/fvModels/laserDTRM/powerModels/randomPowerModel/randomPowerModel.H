@@ -22,9 +22,27 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::powerModels::constant
+    Foam::powerModels::random
 
 Description
+    Rays starting at random positions within the beam radius, each carrying
+    the power Q/nRays.
+
+    The positions are sampled by rejection with the acceptance probability
+    powerDist(r), a Function1 of the distance r from the beam centre, so the
+    power per unit area is proportional to powerDist. The same random
+    sequence is used on all processors.
+
+Usage
+    \table
+        Property  | Description                       | Required | Default
+        position  | Beam centre, Function1 of time    | yes      |
+        radius    | Beam radius                       | yes      |
+        normal    | Beam direction                    | yes      |
+        Q         | Laser power                       | yes      |
+        nRays     | Number of rays                    | yes      |
+        powerDist | Radial power profile, Function1   | yes      |
+    \endtable
 
 SourceFiles
     randomPowerModel.C
@@ -35,7 +53,6 @@ SourceFiles
 #define randomPowerModel_H
 
 #include "powerModel.H"
-
 #include "randomGenerator.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -45,9 +62,8 @@ namespace Foam
 namespace powerModels
 {
 
-
 /*---------------------------------------------------------------------------*\
-                          Class randomPowerModel Declaration
+                           Class random Declaration
 \*---------------------------------------------------------------------------*/
 
 class random
@@ -56,30 +72,26 @@ class random
 {
     // Private Data
 
-        //- Random number generator
+        //- Random number generator, synchronised across processors
         static randomGenerator rndGen_;
 
         //- Number of rays
         const label nRays_;
 
-        //- Radial power distribution
+        //- Radial power profile
         const autoPtr<Function1<scalar>> powerDist_;
 
 
 public:
 
     //- Runtime type information
-    TypeName("random")
+    TypeName("random");
 
 
     // Constructors
 
-        //- Construct from components
-        random
-        (
-            const dictionary& dict,
-            const fvMesh& mesh
-        );
+        //- Construct from dictionary and mesh
+        random(const dictionary& dict, const fvMesh& mesh);
 
         //- Disallow default bitwise copy construction
         random(const random&) = delete;
@@ -92,6 +104,7 @@ public:
 
     // Member Functions
 
+        //- Sample new start positions for the current beam position
         virtual void initialise();
 
 
@@ -100,7 +113,6 @@ public:
         //- Disallow default bitwise assignment
         void operator=(const random&) = delete;
 };
-
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

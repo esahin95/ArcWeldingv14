@@ -25,7 +25,12 @@ Class
     Foam::DTRMParticle
 
 Description
-    Laser particle class with coupling to the phase field.
+    Ray of the laserDTRM model, tracked through the mesh as a particle.
+
+    A transmissive ray crosses the transparent phase without losing power.
+    On entering the absorbing phase it becomes absorbing and splits off a
+    reflected, transmissive ray starting on the interface. An absorbing ray
+    deposits its power in the cells it crosses.
 
 SourceFiles
     DTRMParticleI.H
@@ -39,11 +44,8 @@ SourceFiles
 
 #include "particle.H"
 #include "Cloud.H"
-#include "IOstream.H"
-#include "autoPtr.H"
 #include "cellPoint_interpolation.H"
 #include "contiguous.H"
-
 #include "meshSearch.H"
 #include "DynamicField.H"
 #include "reflectionModel.H"
@@ -54,11 +56,8 @@ namespace Foam
 {
 
 // Forward declaration of friend functions and operators
-
 class DTRMParticle;
-
 Ostream& operator<<(Ostream&, const DTRMParticle&);
-
 
 /*---------------------------------------------------------------------------*\
                         Class DTRMParticle Declaration
@@ -73,10 +72,10 @@ class DTRMParticle
         //- Size in bytes of the fields
         static const std::size_t sizeofFields_;
 
-        //- Initial power
+        //- Initial power of the ray
         scalar q0_;
 
-        //- Track index
+        //- Index of the ray, for output
         label trackIndex_;
 
         //- Current power
@@ -85,17 +84,17 @@ class DTRMParticle
         //- Direction
         vector d_;
 
-        //- Transmissivity
+        //- Is the ray transmissive, i.e. not yet absorbing?
         bool transmissive_;
 
 
 public:
 
-    static label nParticles;
+    //- Number of rays generated in the current ray tracing
+    static label nTracks;
 
-    //- Power lost during tracing
+    //- Power lost during the ray tracing
     static scalar qLost;
-
 
     friend class lagrangian::Cloud<DTRMParticle>;
 
@@ -105,29 +104,37 @@ public:
     :
         public particle::trackingData
     {
-        // Interpolators for continuous phase fields
+        // Interpolators for the continuous phase fields
 
+            //- Phase fraction of the transparent phase
             const interpolations::cellPoint<scalar>& alphaInterp_;
+
+            //- Absorption coefficient
             const interpolations::cellPoint<scalar>& absorpInterp_;
+
+            //- Phase fraction gradient
             const interpolations::cellPoint<vector>& gradAlphaInterp_;
 
-        // Reference to heat source
+        //- Absorbed power per cell
+        volScalarField& Q_;
 
-            volScalarField& Q_;
+        // Ray output
 
-        // Ray tracing
-
+            //- Positions along the rays
             DynamicField<vector>& allPositions_;
+
+            //- Ray indices of the positions
             DynamicField<label>& allTracks_;
+
+            //- Ray powers at the positions
             DynamicField<scalar>& allPowers_;
 
-        // Reference to meshSearch
+        //- Mesh search engine
+        const meshSearch& searchEngine_;
 
-            const meshSearch& searchEngine_;
+        //- Reflection model
+        const reflectionModel& reflection_;
 
-        // Reflection model pointer
-
-            const reflectionModel& reflection_;
 
     public:
 
@@ -150,26 +157,59 @@ public:
 
         // Member Functions
 
-            inline const interpolations::cellPoint<scalar>& alphaInterp() const;
+            inline const interpolations::cellPoint<scalar>&
+                alphaInterp() const;
 
-            inline const interpolations::cellPoint<scalar>& absorpInterp() const;
+            inline const interpolations::cellPoint<scalar>&
+                absorpInterp() const;
 
-            inline const interpolations::cellPoint<vector>& gradAlphaInterp() const;
+            inline const interpolations::cellPoint<vector>&
+                gradAlphaInterp() const;
 
             inline const meshSearch& searchEngine() const;
 
             inline const reflectionModel& reflection() const;
 
-            inline scalar& Q(label cellI);
+            //- Return the absorbed power of the given cell
+            inline scalar& Q(const label celli);
 
+            //- Record a ray position at write times
             inline void append
             (
-                vector position,
-                label trackIndex,
-                scalar power
+                const vector& position,
+                const label trackIndex,
+                const scalar power
             );
     };
 
+
+private:
+
+    // Private Member Functions
+
+        //- Interpolate a field to the current position
+        template<class Type>
+        inline Type interpolate
+        (
+            const interpolations::cellPoint<Type>& interp,
+            const polyMesh& mesh
+        ) const;
+
+        //- Move to the interface, alpha = 0.5, on the segment p0 to p0 + dx,
+        //  given the phase fractions alpha0 and alpha1 at its ends, by
+        //  regula falsi. Return the fraction of dx at which it was found.
+        scalar locateInterface
+        (
+            const vector& p0,
+            const vector& dx,
+            const label celli,
+            const scalar alpha0,
+            const scalar alpha1,
+            const trackingData& td
+        );
+
+
+public:
 
     //- Runtime type information
     TypeName("DTRMParticle");
@@ -177,12 +217,12 @@ public:
 
     // Constructors
 
-        //- Construct from components
+        //- Construct from position and cell, direction and power
         DTRMParticle
         (
             const meshSearch& searchEngine,
             const vector& position,
-            const label cellI,
+            const label celli,
             label& nLocateBoundaryHits,
             const vector& direction,
             const scalar power,
@@ -201,17 +241,21 @@ public:
 
     // Member Functions
 
-
         // Tracking
 
-            //- Move
+            //- Track the ray, splitting off the reflected ray at the
+            //  interface and depositing the absorbed power
             bool move(lagrangian::Cloud<DTRMParticle>&, trackingData&);
 
 
         // Patch interactions
 
-            //- Overridable function to handle the particle hitting a wallPatch
-            void hitWallPatch(lagrangian::Cloud<DTRMParticle>& cloud, trackingData& td);
+            //- Stop the ray on hitting a wall
+            void hitWallPatch
+            (
+                lagrangian::Cloud<DTRMParticle>& cloud,
+                trackingData& td
+            );
 
 
     // Ostream Operator

@@ -25,22 +25,24 @@ Class
     Foam::powerModel
 
 Description
+    Base class for the laser power models of laserDTRM, which distribute the
+    laser power over the start positions of the rays.
+
+    The beam is centred on \c position, a Function1 of time, has the given
+    \c radius and points in the \c normal direction.
 
 SourceFiles
-    powerModelI.H
     powerModel.C
-    powerModelIO.C
+    powerModelNew.C
 
 \*---------------------------------------------------------------------------*/
 
 #ifndef powerModel_H
 #define powerModel_H
 
-#include "IOdictionary.H"
-#include "runTimeSelectionTables.H"
-
-#include "Function1.H"
 #include "fvMesh.H"
+#include "Function1.H"
+#include "runTimeSelectionTables.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -48,45 +50,42 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                          Class powerModel Declaration
+                         Class powerModel Declaration
 \*---------------------------------------------------------------------------*/
 
 class powerModel
 {
-
 protected:
 
-    // References
+    // Protected Data
 
-        //- Constant reference to the mesh
+        //- Reference to the mesh
         const fvMesh& mesh_;
 
-    // Laser data
-
-        //- Laser position
+        //- Beam centre as a function of time
         const autoPtr<Function1<vector>> pos_;
 
-        //- Laser radius
+        //- Beam radius
         const scalar rad_;
 
-        //- Laser normal direction
+        //- Beam direction, normalised
         const vector normal_;
 
         //- Laser power
         const scalar Q_;
 
-    // Containers
-
-        //- Positions
+        //- Start positions of the rays
         List<vector> positions_;
 
-        //- Powers
+        //- Powers of the rays
         List<scalar> powers_;
+
 
 public:
 
     //- Runtime type information
     TypeName("powerModel");
+
 
     // Declare run-time constructor selection table
 
@@ -105,7 +104,7 @@ public:
 
     // Constructors
 
-        //- Construct from components
+        //- Construct from dictionary and mesh
         powerModel(const dictionary& dict, const fvMesh& mesh);
 
         //- Disallow default bitwise copy construction
@@ -114,7 +113,7 @@ public:
 
     // Selectors
 
-        //- Select null constructed
+        //- Select from dictionary
         static autoPtr<powerModel> New
         (
             const dictionary& dict,
@@ -129,22 +128,22 @@ public:
 
     // Member Functions
 
-        // Initialise positions and powers
+        //- Set the start positions and powers of the rays
         virtual void initialise() = 0;
 
-        // Access positions
+        //- Return the start positions of the rays
         const List<vector>& positions() const
         {
             return positions_;
         }
 
-        // Access powers
+        //- Return the powers of the rays
         const List<scalar>& powers() const
         {
             return powers_;
         }
 
-        // Access normal
+        //- Return the beam direction
         const vector& normal() const
         {
             return normal_;
@@ -156,7 +155,6 @@ public:
         //- Disallow default bitwise assignment
         void operator=(const powerModel&) = delete;
 };
-
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

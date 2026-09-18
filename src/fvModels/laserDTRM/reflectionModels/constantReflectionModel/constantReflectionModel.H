@@ -25,6 +25,13 @@ Class
     Foam::reflectionModels::constant
 
 Description
+    Reflectivity independent of the angle of incidence.
+
+Usage
+    \table
+        Property | Description  | Required | Default
+        rho      | Reflectivity | yes      |
+    \endtable
 
 SourceFiles
     constantReflectionModel.C
@@ -43,9 +50,8 @@ namespace Foam
 namespace reflectionModels
 {
 
-
 /*---------------------------------------------------------------------------*\
-                          Class constantReflectionModel Declaration
+                           Class constant Declaration
 \*---------------------------------------------------------------------------*/
 
 class constant
@@ -54,24 +60,20 @@ class constant
 {
     // Private Data
 
-        //- constant reflectivity
+        //- Reflectivity
         const scalar rho_;
 
 
 public:
 
     //- Runtime type information
-    TypeName("constant")
+    TypeName("constant");
 
 
     // Constructors
 
-        //- Construct from components
-        constant
-        (
-            const dictionary& dict,
-            const fvMesh& mesh
-        );
+        //- Construct from dictionary and mesh
+        constant(const dictionary& dict, const fvMesh& mesh);
 
         //- Disallow default bitwise copy construction
         constant(const constant&) = delete;
@@ -84,7 +86,7 @@ public:
 
     // Member Functions
 
-        // Reflectivity
+        //- Return the reflectivity for the cosine of the angle of incidence
         virtual scalar rho(const scalar cosTheta) const;
 
 
@@ -93,7 +95,6 @@ public:
         //- Disallow default bitwise assignment
         void operator=(const constant&) = delete;
 };
-
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

@@ -24,30 +24,28 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "fresnelLorentzDrudeReflectionModel.H"
-#include "addToRunTimeSelectionTable.H"
-
 #include "fundamentalConstants.H"
 #include "universalConstants.H"
 #include "electromagneticConstants.H"
 #include "mathematicalConstants.H"
+#include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
 namespace Foam
 {
-    namespace reflectionModels
-    {
-        defineTypeNameAndDebug(fresnelLorentzDrude, 0);
-        addToRunTimeSelectionTable
-        (
-            reflectionModel,
-            fresnelLorentzDrude,
-            dictionary
-        );
-    }
+namespace reflectionModels
+{
+    defineTypeNameAndDebug(fresnelLorentzDrude, 0);
+    addToRunTimeSelectionTable
+    (
+        reflectionModel,
+        fresnelLorentzDrude,
+        dictionary
+    );
+}
 }
 
-using namespace Foam::constant;
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
@@ -58,57 +56,46 @@ Foam::reflectionModels::fresnelLorentzDrude::fresnelLorentzDrude
 )
 :
     reflectionModel(dict, mesh),
-    N_
-    (
-        "N",
-        dimless/dimVolume,
-        dict.lookup<scalar>("N")
-    ),
-    lambda_
-    (
-        "lambda",
-        dimLength,
-        dict.lookup<scalar>("lambda")
-    ),
+    N_("N", dimless/dimVolume, dict.lookup<scalar>("N")),
+    lambda_("lambda", dimLength, dict.lookup<scalar>("lambda")),
     sigma_
     (
         "sigma",
-        dimensionSet(-1,-3,3,0,0,2,0),
+        dimensionSet(-1, -3, 3, 0, 0, 2, 0),
         dict.lookup<scalar>("sigma")
     ),
     n_(0),
     k_(0)
 {
+    using namespace constant;
+
     // Plasma frequency squared
     const dimensionedScalar omegaPSqr =
-        N_*sqr(electromagnetic::e) / electromagnetic::epsilon0 / atomic::me;
+        N_*sqr(electromagnetic::e)/electromagnetic::epsilon0/atomic::me;
 
     // Damping frequency
-    const dimensionedScalar gamma =
-        omegaPSqr * electromagnetic::epsilon0 / sigma_;
-    Info<<electromagnetic::epsilon0.dimensions()<<endl;
+    const dimensionedScalar gamma = omegaPSqr*electromagnetic::epsilon0/sigma_;
 
     // Laser angular frequency
-    const dimensionedScalar omega =
-        mathematical::twoPi * universal::c / lambda_;
+    const dimensionedScalar omega = mathematical::twoPi*universal::c/lambda_;
 
     // Relative permittivity
-    const scalar epsReal =
-        1 - (omegaPSqr / (sqr(gamma)+sqr(omega))).value();
+    const scalar epsReal = 1 - (omegaPSqr/(sqr(gamma) + sqr(omega))).value();
     const scalar epsImag =
-        (gamma/omega * omegaPSqr / (sqr(gamma)+sqr(omega))).value();
+        (gamma/omega*omegaPSqr/(sqr(gamma) + sqr(omega))).value();
 
     // Complex refractive index
-    n_ = sqrt(0.5 * (sqrt(sqr(epsReal)+sqr(epsImag)) + epsReal));
-    k_ = sqrt(0.5 * (sqrt(sqr(epsReal)+sqr(epsImag)) - epsReal));
-    DebugInfo<<"Reflextive index set to n = " << n_
-             << " , k = " << k_ << endl;
-    DebugInfo<<"Normal incidence reflectivity R = " << rho(1.0) << endl;
+    const scalar magEps = sqrt(sqr(epsReal) + sqr(epsImag));
+    n_ = sqrt(0.5*(magEps + epsReal));
+    k_ = sqrt(0.5*(magEps - epsReal));
+
+    DebugInfo
+        << "Refractive index set to n = " << n_ << " , k = " << k_ << nl
+        << "Normal incidence reflectivity R = " << rho(1.0) << endl;
 }
 
 
-// * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
-
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 Foam::scalar Foam::reflectionModels::fresnelLorentzDrude::rho
 (
@@ -122,15 +109,18 @@ Foam::scalar Foam::reflectionModels::fresnelLorentzDrude::rho
     const scalar kSqr = sqr(k_);
 
     const scalar x = nSqr - kSqr - sinThetaSqr;
-    const scalar aSqr = 0.5 * (sqrt(sqr(x) + 4*nSqr*kSqr) + x);
-    const scalar bSqr = 0.5 * (sqrt(sqr(x) + 4*nSqr*kSqr) - x);
+    const scalar root = sqrt(sqr(x) + 4*nSqr*kSqr);
+    const scalar aSqr = 0.5*(root + x);
+    const scalar bSqr = 0.5*(root - x);
     const scalar a = sqrt(aSqr);
 
-    const scalar Rs = (sqr(a-cosTheta) + bSqr) / (sqr(a+cosTheta) + bSqr);
-    const scalar Rp = Rs * (sqr(a-sinThetaTanTheta) + bSqr)
-                         / (sqr(a+sinThetaTanTheta) + bSqr);
+    // Reflectivities for s- and p-polarised light
+    const scalar Rs = (sqr(a - cosTheta) + bSqr)/(sqr(a + cosTheta) + bSqr);
+    const scalar Rp =
+        Rs*(sqr(a - sinThetaTanTheta) + bSqr)
+       /(sqr(a + sinThetaTanTheta) + bSqr);
 
-    return 0.5 * (Rs + Rp);
+    return 0.5*(Rs + Rp);
 }
 
 

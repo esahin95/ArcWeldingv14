@@ -25,8 +25,7 @@ License
 
 #include "reflectionModel.H"
 
-
-// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * * //
 
 Foam::autoPtr<Foam::reflectionModel> Foam::reflectionModel::New
 (

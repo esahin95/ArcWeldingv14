@@ -23,8 +23,6 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "DTRMParticle.H"
-
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 inline Foam::DTRMParticle::trackingData::trackingData
@@ -62,11 +60,13 @@ Foam::DTRMParticle::trackingData::alphaInterp() const
     return alphaInterp_;
 }
 
+
 inline const Foam::interpolations::cellPoint<Foam::scalar>&
 Foam::DTRMParticle::trackingData::absorpInterp() const
 {
     return absorpInterp_;
 }
+
 
 inline const Foam::interpolations::cellPoint<Foam::vector>&
 Foam::DTRMParticle::trackingData::gradAlphaInterp() const
@@ -74,11 +74,13 @@ Foam::DTRMParticle::trackingData::gradAlphaInterp() const
     return gradAlphaInterp_;
 }
 
+
 inline const Foam::meshSearch&
 Foam::DTRMParticle::trackingData::searchEngine() const
 {
     return searchEngine_;
 }
+
 
 inline const Foam::reflectionModel&
 Foam::DTRMParticle::trackingData::reflection() const
@@ -86,16 +88,18 @@ Foam::DTRMParticle::trackingData::reflection() const
     return reflection_;
 }
 
-inline Foam::scalar& Foam::DTRMParticle::trackingData::Q(label cellI)
+
+inline Foam::scalar& Foam::DTRMParticle::trackingData::Q(const label celli)
 {
-    return Q_[cellI];
+    return Q_[celli];
 }
+
 
 inline void Foam::DTRMParticle::trackingData::append
 (
-    vector position,
-    label trackIndex,
-    scalar power
+    const vector& position,
+    const label trackIndex,
+    const scalar power
 )
 {
     if (mesh.time().writeTime())
@@ -105,5 +109,17 @@ inline void Foam::DTRMParticle::trackingData::append
         allPowers_.append(power);
     }
 }
+
+
+template<class Type>
+inline Type Foam::DTRMParticle::interpolate
+(
+    const interpolations::cellPoint<Type>& interp,
+    const polyMesh& mesh
+) const
+{
+    return interp.interpolate(coordinates(), currentTetIndices(mesh));
+}
+
 
 // ************************************************************************* //

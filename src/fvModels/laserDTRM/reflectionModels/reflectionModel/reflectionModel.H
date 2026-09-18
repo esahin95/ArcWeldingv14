@@ -25,18 +25,20 @@ Class
     Foam::reflectionModel
 
 Description
+    Base class for the reflection models of laserDTRM, providing the
+    reflectivity as a function of the cosine of the angle of incidence and
+    the direction of the specularly reflected ray.
 
 SourceFiles
-    reflectionModelI.H
     reflectionModel.C
-    reflectionModelIO.C
+    reflectionModelNew.C
 
 \*---------------------------------------------------------------------------*/
 
 #ifndef reflectionModel_H
 #define reflectionModel_H
 
-#include "IOdictionary.H"
+#include "fvMesh.H"
 #include "runTimeSelectionTables.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -44,25 +46,17 @@ SourceFiles
 namespace Foam
 {
 
-
-// Forward declaration of classes
-class fvMesh;
-
 /*---------------------------------------------------------------------------*\
-                          Class reflectionModel Declaration
+                       Class reflectionModel Declaration
 \*---------------------------------------------------------------------------*/
 
 class reflectionModel
 {
-    // Private Data
-
-        //- Constant reference to the mesh
-        const fvMesh& mesh_;
-
 public:
 
     //- Runtime type information
     TypeName("reflectionModel");
+
 
     // Declare run-time constructor selection table
 
@@ -81,7 +75,7 @@ public:
 
     // Constructors
 
-        //- Construct from components
+        //- Construct from dictionary and mesh
         reflectionModel(const dictionary& dict, const fvMesh& mesh);
 
         //- Disallow default bitwise copy construction
@@ -90,7 +84,7 @@ public:
 
     // Selectors
 
-        //- Select null constructed
+        //- Select from dictionary
         static autoPtr<reflectionModel> New
         (
             const dictionary& dict,
@@ -105,14 +99,11 @@ public:
 
     // Member Functions
 
-        // Reflected direction
-        virtual vector R
-        (
-            const vector& incident,
-            const vector& n
-        ) const;
+        //- Return the direction of the specularly reflected ray for the
+        //  incident direction and the unit interface normal n
+        virtual vector R(const vector& incident, const vector& n) const;
 
-        // Reflectivity
+        //- Return the reflectivity for the cosine of the angle of incidence
         virtual scalar rho(const scalar cosTheta) const = 0;
 
 
@@ -121,7 +112,6 @@ public:
         //- Disallow default bitwise assignment
         void operator=(const reflectionModel&) = delete;
 };
-
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

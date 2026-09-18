@@ -24,27 +24,37 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "laserDTRM.H"
-#include "compressibleTwoPhaseVoFMixture.H"
-#include "fvmSup.H"
-#include "uniformDimensionedFields.H"
+#include "DTRMParticle.H"
+#include "fvMatrix.H"
+#include "fvcGrad.H"
+#include "fvcVolumeIntegrate.H"
+#include "zeroGradientFvPatchFields.H"
+#include "writeFile.H"
 #include "addToRunTimeSelectionTable.H"
 
-#include "zeroGradientFvPatchFields.H"
-#include "Cloud.H"
-#include "DTRMParticle.H"
-#include "fvcVolumeIntegrate.H"
-#include "writeFile.H"
-#include "fvcGrad.H"
-#include "List.H"
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
 namespace Foam
 {
-
-template<class Type>
-void gatherAndFlatten(DynamicField<Type>& field)
+namespace fv
 {
+    defineTypeNameAndDebug(laserDTRM, 0);
+    addToRunTimeSelectionTable(fvModel, laserDTRM, dictionary);
+}
+}
+
+
+// * * * * * * * * * * * * * * * Local Functions * * * * * * * * * * * * * * //
+
+namespace
+{
+
+// Gather the field onto the master, concatenated in processor order
+template<class Type>
+void gatherAndFlatten(Foam::DynamicField<Type>& field)
+{
+    using namespace Foam;
+
     List<List<Type>> gatheredField(Pstream::nProcs());
     gatheredField[Pstream::myProcNo()] = field;
     Pstream::gatherList(gatheredField);
@@ -60,24 +70,6 @@ void gatherAndFlatten(DynamicField<Type>& field)
 }
 
 
-// * * * * * * * * * * * * * Static Member Functions * * * * * * * * * * * * //
-
-namespace Foam
-{
-    namespace fv
-    {
-        defineTypeNameAndDebug(laserDTRM, 0);
-
-        addToRunTimeSelectionTable
-        (
-            fvModel,
-            laserDTRM,
-            dictionary
-        );
-    }
-}
-
-
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 Foam::fv::laserDTRM::laserDTRM
@@ -89,45 +81,21 @@ Foam::fv::laserDTRM::laserDTRM
 )
 :
     fvModel(sourceName, modelType, mesh, dict),
-
-    phaseName_(dict.lookup("phase")),
-
-    thermo_
-    (
-        mesh.lookupObject<fluidThermo>
-        (
-            IOobject::groupName(physicalProperties::typeName, phaseName_)
-        )
-    ),
-
     alpha_
     (
         mesh.lookupObject<volScalarField>
         (
-            IOobject::groupName("alpha", phaseName_)
+            IOobject::groupName("alpha", dict.lookup<word>("phase"))
         )
     ),
-
-    powerModelPtr_
-    (
-        powerModel::New(dict.subDict("powerModel"), mesh)
-    ),
-
+    powerModelPtr_(powerModel::New(dict.subDict("powerModel"), mesh)),
     curTimeIndex_(-1),
-
     relax_(dict.lookupOrDefault<scalar>("relax", 1.0)),
-
     a_(dict.lookupOrDefault<scalar>("absorption", 1e+6)),
-
     reflectionModelPtr_
     (
-        reflectionModel::New
-        (
-            dict.subDict("reflectionModel"),
-            mesh
-        )
+        reflectionModel::New(dict.subDict("reflectionModel"), mesh)
     ),
-
     Q_
     (
         IOobject
@@ -139,26 +107,19 @@ Foam::fv::laserDTRM::laserDTRM
             IOobject::AUTO_WRITE
         ),
         mesh,
-        dimensionedScalar(dimPower/dimVolume, 0.0),
+        dimensionedScalar(dimPower/dimVolume, 0),
         zeroGradientFvPatchScalarField::typeName
     ),
-
     formatterPtr_(setWriter::New(dict.lookup("setFormat"), dict)),
-
     outputPath_
     (
-        mesh().time().globalPath()
-        /functionObjects::writeFile::outputPrefix
-        /name()
+        mesh.time().globalPath()/functionObjects::writeFile::outputPrefix/name()
     ),
-
     allPositions_(),
     allTracks_(),
     allPowers_(),
     writeIndex_(-1)
 {
-    Q_.oldTime();
-
     mkDir(outputPath_);
 }
 
@@ -167,7 +128,6 @@ Foam::fv::laserDTRM::laserDTRM
 
 Foam::wordList Foam::fv::laserDTRM::addSupFields() const
 {
-    //return wordList({"T", thermo_.he().name()});
     return wordList(1, "T");
 }
 
@@ -190,54 +150,61 @@ void Foam::fv::laserDTRM::correct()
         "DTRMCloud",
         IDLList<DTRMParticle>()
     );
-    DTRMParticle::nParticles = 0; // Maybe rename to nTracks
+    DTRMParticle::nTracks = 0;
     DTRMParticle::qLost = 0;
 
     powerModelPtr_->initialise();
     const List<vector>& positions = powerModelPtr_->positions();
     const List<scalar>& powers = powerModelPtr_->powers();
     const vector& normal = powerModelPtr_->normal();
-    const scalar Qtot = sum(powers);//returnReduce(powers, sumOp<scalar>());
-    DebugInfo<<"Total power initialised: Q = " << Qtot <<endl;
 
-    // Populate cloud
-    label nLocateBoundaryHits = 0;
-    forAll(positions, trackIndex)
+    const scalar Qtot = sum(powers);
+    DebugInfo<< "Total power initialised: Q = " << Qtot << endl;
+
+    // Start each ray on the highest-numbered processor containing its start
+    // point
+    labelList cells(positions.size());
+    labelList owners(positions.size());
+    forAll(positions, i)
     {
-        // Particle data
-        const vector& position = positions[trackIndex];
-        const scalar& power = powers[trackIndex];
-        const label cellI = searchEngine.findCell(position);
+        cells[i] = searchEngine.findCell(positions[i]);
+        owners[i] = cells[i] != -1 ? Pstream::myProcNo() : -1;
+    }
+    Pstream::listCombineGather(owners, maxEqOp<label>());
+    Pstream::listCombineScatter(owners);
 
-        // Generate particle for a single processor only
-        label candidate = cellI!=-1? Pstream::myProcNo() : -1;
-        label owner = returnReduce(candidate, maxOp<label>());
-        if (owner == Pstream::myProcNo())
+    label nLocateBoundaryHits = 0;
+    forAll(positions, i)
+    {
+        if (owners[i] == Pstream::myProcNo())
         {
-            cloud.addParticle(new DTRMParticle
+            cloud.addParticle
+            (
+                new DTRMParticle
                 (
                     searchEngine,
-                    position,
-                    cellI,
+                    positions[i],
+                    cells[i],
                     nLocateBoundaryHits,
                     normal,
-                    power
+                    powers[i]
                 )
             );
         }
     }
 
-    // Tracking data fields
-    const volVectorField gradAlpha = fvc::grad(alpha_);
-    const volScalarField absorp = a_ * (1 - alpha_);
+    // Fields sampled along the rays
+    const volVectorField gradAlpha(fvc::grad(alpha_));
+    const volScalarField absorp(a_*(1 - alpha_));
 
-    // Construct tracking data
-    interpolations::cellPoint<scalar> alphaInterp(alpha_);
-    interpolations::cellPoint<scalar> absorpInterp(absorp);
-    interpolations::cellPoint<vector> gradAlphaInterp(gradAlpha);
+    const interpolations::cellPoint<scalar> alphaInterp(alpha_);
+    const interpolations::cellPoint<scalar> absorpInterp(absorp);
+    const interpolations::cellPoint<vector> gradAlphaInterp(gradAlpha);
+
     allPositions_.clear();
     allTracks_.clear();
     allPowers_.clear();
+
     DTRMParticle::trackingData td
     (
         cloud,
@@ -252,16 +219,14 @@ void Foam::fv::laserDTRM::correct()
         reflectionModelPtr_()
     );
 
-    // Ray tracing
     cloud.move(cloud, td);
-    const scalar qLost =
-        returnReduce(DTRMParticle::qLost, sumOp<scalar>());
-    DebugInfo<< "Lost power fraction: "
-             << (qLost / Qtot) << endl;
 
-    // Finalize computation
+    DebugInfo<< "Lost power fraction: "
+        << returnReduce(DTRMParticle::qLost, sumOp<scalar>())/Qtot << endl;
+
+    // Convert the absorbed power to a power density and relax in time
     Q_.primitiveFieldRef() /= mesh().V().primitiveField();
-    Q_ = Q_.prevIter()*(1.0-relax_) + Q_*relax_;
+    Q_ = Q_.prevIter()*(1.0 - relax_) + Q_*relax_;
 
     curTimeIndex_ = mesh().time().timeIndex();
 }
@@ -276,24 +241,24 @@ void Foam::fv::laserDTRM::addSup
 {
     if (debug)
     {
-        Info<< type() << ": applying source to " << eqn.psi().name() << endl;
-
-        const dimensionedScalar Qtot = fvc::domainIntegrate(Q_);
-        Info<< "Adding laser deposition to source: " << Qtot << endl;
+        Info<< type() << ": applying source to " << eqn.psi().name() << nl
+            << "Adding laser deposition to source: "
+            << fvc::domainIntegrate(Q_) << endl;
     }
 
     eqn += Q_;
 }
 
-void Foam::fv::laserDTRM::topoChange(const polyTopoChangeMap& map)
+
+void Foam::fv::laserDTRM::topoChange(const polyTopoChangeMap&)
 {}
 
 
-void Foam::fv::laserDTRM::mapMesh(const polyMeshMap& map)
+void Foam::fv::laserDTRM::mapMesh(const polyMeshMap&)
 {}
 
 
-void Foam::fv::laserDTRM::distribute(const polyDistributionMap& map)
+void Foam::fv::laserDTRM::distribute(const polyDistributionMap&)
 {}
 
 
@@ -302,8 +267,9 @@ bool Foam::fv::laserDTRM::movePoints()
     return true;
 }
 
+
 bool Foam::fv::laserDTRM::write(const bool write) const
- {
+{
     if (Pstream::parRun())
     {
         gatherAndFlatten(allPositions_);
@@ -313,17 +279,13 @@ bool Foam::fv::laserDTRM::write(const bool write) const
 
     if (Pstream::master() && allPositions_.size())
     {
-        DebugInfo<< "Writing out rays for time "
-                 << mesh().time().name()
-                 << " in directory "
-                 << outputPath_
-                 <<endl;
+        DebugInfo<< "Writing out rays for time " << mesh().time().name()
+            << " in directory " << outputPath_ << endl;
 
-        const word writeIndex = Time::timeName(++writeIndex_);
         formatterPtr_->write
         (
             outputPath_,
-            IOobject::groupName("traced", writeIndex),
+            IOobject::groupName("traced", Time::timeName(++writeIndex_)),
             coordSet(allTracks_, word::null, allPositions_),
             "Power",
             allPowers_
@@ -331,7 +293,7 @@ bool Foam::fv::laserDTRM::write(const bool write) const
     }
 
     return true;
- }
+}
 
 
 // ************************************************************************* //

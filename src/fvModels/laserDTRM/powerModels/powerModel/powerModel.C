@@ -43,33 +43,11 @@ Foam::powerModel::powerModel
 )
 :
     mesh_(mesh),
-
-    pos_
-    (
-        Function1<vector>::New
-        (
-            "position",
-            dimless,
-            dimless,
-            dict
-        )
-    ),
-
+    pos_(Function1<vector>::New("position", dimless, dimless, dict)),
     rad_(dict.lookup<scalar>("radius")),
-
     normal_(normalised(dict.lookup<vector>("normal"))),
-
-    Q_(dict.lookup<scalar>("Q")),
-
-    positions_(0),
-
-    powers_(0)
+    Q_(dict.lookup<scalar>("Q"))
 {}
-
-
-// * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
-
-
 
 
 // ************************************************************************* //
