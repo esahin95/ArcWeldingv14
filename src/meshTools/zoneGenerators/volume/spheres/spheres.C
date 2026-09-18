@@ -42,19 +42,15 @@ namespace Foam
 
 inline bool Foam::zoneGenerators::spheres::contains(const point& p) const
 {
-    bool result = false;
-    forAll(centres_, sphereI)
+    forAll(centres_, i)
     {
-        result =
-            result || (magSqr(centres_[sphereI] - p) <= radiiSqr_[sphereI]);
-
-        if (result)
+        if (magSqr(centres_[i] - p) <= radiiSqr_[i])
         {
-            break;
+            return true;
         }
     }
 
-    return result;
+    return false;
 }
 
 
@@ -67,30 +63,35 @@ Foam::zoneGenerators::spheres::spheres
     const dictionary& dict
 )
 :
-    volume(name, mesh, dict),
-    centres_(),
-    radiiSqr_(),
-    offset_(dict.lookupOrDefault<vector>("offset", dimLength, Zero)),
-    scale_(dict.lookupOrDefault<scalar>("scale", dimless, 1.0))
+    volume(name, mesh, dict)
 {
-    // Raw list of data (x y z r clumpID)
-    List<scalar> data(dict.lookup("data"));
-    if (data.size() % 5 != 0)
+    const vector offset
+    (
+        dict.lookupOrDefault<vector>("offset", dimLength, Zero)
+    );
+    const scalar scale(dict.lookupOrDefault<scalar>("scale", dimless, 1.0));
+
+    // Sphere data, (x y z r id) per sphere
+    const label nData = 5;
+    const List<scalar> data(dict.lookup("data"));
+
+    if (data.size() % nData != 0)
     {
         FatalIOErrorInFunction(dict)
             << "size of data (" << data.size()
-            << ") is not a non-zero multiple of 5"
+            << ") is not a multiple of " << nData
             << exit(FatalIOError);
     }
 
-    // Read in spheres
-    for(label i = 0; i < data.size(); i += 5)
+    centres_.setSize(data.size()/nData);
+    radiiSqr_.setSize(centres_.size());
+
+    forAll(centres_, i)
     {
-        centres_.append
-            (
-                vector(data[i], data[i+1], data[i+2]) + offset_
-            );
-        radiiSqr_.append(sqr(data[i+3] * scale_));
+        const label j = nData*i;
+
+        centres_[i] = vector(data[j], data[j + 1], data[j + 2]) + offset;
+        radiiSqr_[i] = sqr(data[j + 3]*scale);
     }
 }
 
