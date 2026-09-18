@@ -24,29 +24,21 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "greyBodyRadiation.H"
-#include "addToRunTimeSelectionTable.H"
-
-#include "physicoChemicalConstants.H"
 #include "fvcGrad.H"
 #include "fvmSup.H"
 #include "fvcVolumeIntegrate.H"
+#include "physicoChemicalConstants.H"
+#include "addToRunTimeSelectionTable.H"
 
-
-// * * * * * * * * * * * * * Static Member Functions * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
 namespace Foam
 {
-    namespace fv
-    {
-        defineTypeNameAndDebug(greyBodyRadiation, 0);
-
-        addToRunTimeSelectionTable
-        (
-            fvModel,
-            greyBodyRadiation,
-            dictionary
-        );
-    }
+namespace fv
+{
+    defineTypeNameAndDebug(greyBodyRadiation, 0);
+    addToRunTimeSelectionTable(fvModel, greyBodyRadiation, dictionary);
+}
 }
 
 
@@ -61,7 +53,6 @@ Foam::fv::greyBodyRadiation::greyBodyRadiation
 )
 :
     fvModel(sourceName, modelType, mesh, dict),
-
     alpha_
     (
         mesh.lookupObject<volScalarField>
@@ -69,39 +60,17 @@ Foam::fv::greyBodyRadiation::greyBodyRadiation
             IOobject::groupName("alpha", dict.lookup<word>("phase"))
         )
     ),
-
-    eps_
-    (
-        dict.lookup<scalar>("eps") * constant::physicoChemical::sigma
-    ),
-
-    T0_
-    (
-        "T0",
-        dimTemperature,
-        dict.lookup<scalar>("T0")
-    ),
-
-    delta_
-    (
-        "delta",
-        mag(fvc::grad(alpha_))
-    ),
-
+    eps_(dict.lookup<scalar>("eps")*constant::physicoChemical::sigma),
+    T0_("T0", dimTemperature, dict.lookup<scalar>("T0")),
+    delta_("delta", mag(fvc::grad(alpha_))),
     radiation_
     (
-        IOobject
-        (
-            "radiation",
-            mesh,
-            IOobject::NO_READ,
-            IOobject::AUTO_WRITE
-        ),
+        IOobject("radiation", mesh, IOobject::NO_READ, IOobject::AUTO_WRITE),
         mesh,
-        dimensionedScalar(dimPower/dimVolume, 0.0)
+        dimensionedScalar(dimPower/dimVolume, 0)
     )
 {
-    Info<< "eps times sigma = " << eps_<<endl;
+    Info<< "eps times sigma = " << eps_ << endl;
 }
 
 
@@ -115,7 +84,6 @@ Foam::wordList Foam::fv::greyBodyRadiation::addSupFields() const
 
 void Foam::fv::greyBodyRadiation::correct()
 {
-    // Correct interface
     delta_ = mag(fvc::grad(alpha_));
 }
 
@@ -132,33 +100,33 @@ void Foam::fv::greyBodyRadiation::addSup
         Info<< type() << ": applying source to " << eqn.psi().name() << endl;
     }
 
-    fvScalarMatrix radEqn
+    const fvScalarMatrix radEqn
     (
         eps_*(pow4(T0_) + 3.0*pow4(T))*delta_
-        - fvm::Sp(4.0*eps_*pow3(T)*delta_, T)
+      - fvm::Sp(4.0*eps_*pow3(T)*delta_, T)
     );
 
-    radiation_ = radEqn&T;
+    radiation_ = radEqn & T;
 
     if (debug)
     {
-        const dimensionedScalar Qtot = fvc::domainIntegrate(radiation_);
-        Info<< "Radiation linearized in fvModel to source: " << Qtot << endl;
+        Info<< "Radiation linearized in fvModel to source: "
+            << fvc::domainIntegrate(radiation_) << endl;
     }
 
     eqn += radEqn;
 }
 
 
-void Foam::fv::greyBodyRadiation::topoChange(const polyTopoChangeMap& map)
+void Foam::fv::greyBodyRadiation::topoChange(const polyTopoChangeMap&)
 {}
 
 
-void Foam::fv::greyBodyRadiation::mapMesh(const polyMeshMap& map)
+void Foam::fv::greyBodyRadiation::mapMesh(const polyMeshMap&)
 {}
 
 
-void Foam::fv::greyBodyRadiation::distribute(const polyDistributionMap& map)
+void Foam::fv::greyBodyRadiation::distribute(const polyDistributionMap&)
 {}
 
 

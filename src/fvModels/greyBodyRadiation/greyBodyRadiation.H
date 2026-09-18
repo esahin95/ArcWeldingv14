@@ -25,22 +25,35 @@ Class
     Foam::fv::greyBodyRadiation
 
 Description
-    Discrete Tray Radiation Method for collimated radiation flux, derived
-    from the implementation given in OpenFOAM-v2512.
+    Grey-body radiation from the interface of a VoF phase to surroundings at
+    temperature T0, added to the temperature equation.
 
-    The ray is considered planar and developed to work with a solver
-    derived from compressibleVoF.
+    The radiative flux eps*sigma*(T0^4 - T^4) is applied per unit interface
+    area, |grad(alpha)|, and linearised about the current temperature T*:
+
+        eps*sigma*(T0^4 + 3*T*^4)*|grad(alpha)|
+      - 4*eps*sigma*T*^3*|grad(alpha)|*T
+
+    where the last term is implicit in T. The source is written as the field
+    \c radiation.
 
 Usage
-    Example usage:
     \verbatim
     greyBodyRadiation
     {
         type    greyBodyRadiation;
-        phase   water;
-        ***Add more stuff here***
+        phase   metal;
+        eps     0.4;
+        T0      300;
     }
     \endverbatim
+
+    \table
+        Property | Description                     | Required | Default
+        phase    | Name of the radiating phase     | yes      |
+        eps      | Emissivity                      | yes      |
+        T0       | Temperature of the surroundings | yes      |
+    \endtable
 
 SourceFiles
     greyBodyRadiation.C
@@ -51,7 +64,6 @@ SourceFiles
 #define greyBodyRadiation_H
 
 #include "fvModel.H"
-
 #include "volFields.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -62,7 +74,7 @@ namespace fv
 {
 
 /*---------------------------------------------------------------------------*\
-                        Class greyBodyRadiation Declaration
+                      Class greyBodyRadiation Declaration
 \*---------------------------------------------------------------------------*/
 
 class greyBodyRadiation
@@ -71,20 +83,21 @@ class greyBodyRadiation
 {
     // Private Data
 
-        // Reference to the liquid phase
+        //- Phase fraction of the radiating phase
         const volScalarField& alpha_;
 
-        // Emissivity times Stefan-Boltzmann constant
+        //- Emissivity times the Stefan-Boltzmann constant
         const dimensionedScalar eps_;
 
-        // Reference temperature
+        //- Temperature of the surroundings
         const dimensionedScalar T0_;
 
-        // Numerical delta function
+        //- Interface area density, |grad(alpha)|
         volScalarField delta_;
 
-        // Radiation field
+        //- Radiation source, for output
         mutable volScalarField radiation_;
+
 
 public:
 
@@ -104,30 +117,27 @@ public:
         );
 
         //- Disallow default bitwise copy construction
-        greyBodyRadiation
-        (
-            const greyBodyRadiation&
-        ) = delete;
+        greyBodyRadiation(const greyBodyRadiation&) = delete;
 
 
     // Member Functions
 
         // Checks
 
-            //- Return the list of fields for which the option adds source term
-            //  to the transport equation
+            //- Return the list of fields for which the fvModel adds source
+            //  term to the transport equation
             virtual wordList addSupFields() const;
 
 
         // Correct
 
-            //- This does nothing
+            //- Update the interface area density
             virtual void correct();
 
 
         // Add explicit and implicit contributions to compressible equation
 
-            //- Add explicit and implicit contribution to phase energy equation
+            //- Add the linearised radiation to the temperature equation
             virtual void addSup
             (
                 const volScalarField& rho,
