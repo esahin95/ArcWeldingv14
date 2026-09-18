@@ -26,13 +26,16 @@ License
 #include "ErrorFunction1.H"
 #include "addToRunTimeSelectionTable.H"
 
+// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
+
 namespace Foam
 {
-    namespace Function1s
-    {
-        addScalarFunction1(ErrorFunction);
-    }
+namespace Function1s
+{
+    addScalarFunction1(ErrorFunction);
 }
+}
+
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
@@ -46,8 +49,8 @@ Foam::Function1s::ErrorFunction::ErrorFunction
     FieldFunction1<scalar, ErrorFunction>(name),
     Tliq_(dict.lookup<scalar>("Tliq", units.x)),
     Tsol_(dict.lookup<scalar>("Tsol", units.x)),
-    Tmid_(0.5 * (Tsol_ + Tliq_)),
-    a_(4.0 / (max(small, Tliq_ - Tsol_)))
+    Tmid_(0.5*(Tsol_ + Tliq_)),
+    a_(4/max(small, Tliq_ - Tsol_))
 {
     if (Tliq_ < Tsol_)
     {
@@ -56,6 +59,7 @@ Foam::Function1s::ErrorFunction::ErrorFunction
             << exit(FatalIOError);
     }
 }
+
 
 Foam::Function1s::ErrorFunction::ErrorFunction(const ErrorFunction& errf)
 :
@@ -75,28 +79,32 @@ Foam::Function1s::ErrorFunction::~ErrorFunction()
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-Foam::scalar Foam::Function1s::ErrorFunction::value(const scalar x) const 
+Foam::scalar Foam::Function1s::ErrorFunction::value(const scalar x) const
 {
-    scalar y(0.5 * (1.0 - Foam::erf(a_ * (x - Tmid_))));
-    return y;
+    return 0.5*(1 - erf(a_*(x - Tmid_)));
 }
+
 
 Foam::scalar Foam::Function1s::ErrorFunction::integral
 (
-    const scalar x1, 
+    const scalar x1,
     const scalar x2
-) const 
+) const
 {
     NotImplemented;
-    return Zero;
+    return 0;
 }
+
 
 void Foam::Function1s::ErrorFunction::write
 (
-    Ostream& os, 
+    Ostream& os,
     const unitSets& units
-) const 
+) const
 {
     writeEntry(os, "Tsol", units.x, Tsol_);
     writeEntry(os, "Tliq", units.x, Tliq_);
 }
+
+
+// ************************************************************************* //
