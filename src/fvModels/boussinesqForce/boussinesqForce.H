@@ -41,9 +41,8 @@ SourceFiles
 #define boussinesqForce_H
 
 #include "fvModel.H"
-
-#include "volFields.H"
 #include "fluidThermo.H"
+#include "volFields.H"
 #include "uniformDimensionedFields.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -54,7 +53,7 @@ namespace fv
 {
 
 /*---------------------------------------------------------------------------*\
-                        Class boussinesqForce Declaration
+                       Class boussinesqForce Declaration
 \*---------------------------------------------------------------------------*/
 
 class boussinesqForce
@@ -63,23 +62,24 @@ class boussinesqForce
 {
     // Private Data
 
-        // Reference to the phase fraction
+        //- Phase fraction
         const volScalarField& alpha_;
 
-        // Reference to the temperature field
+        //- Temperature
         const volScalarField& T_;
 
-        //- Reference to the phase thermo
+        //- Phase thermo
         const fluidThermo& thermo_;
 
-        // Thermal expansion coefficient
+        //- Thermal expansion coefficient
         const dimensionedScalar beta_;
 
-        // Reference temperature
+        //- Reference temperature
         const dimensionedScalar T0_;
 
         //- Gravitational acceleration
-        uniformDimensionedVectorField g_;
+        const uniformDimensionedVectorField g_;
+
 
 public:
 
@@ -99,30 +99,21 @@ public:
         );
 
         //- Disallow default bitwise copy construction
-        boussinesqForce
-        (
-            const boussinesqForce&
-        ) = delete;
+        boussinesqForce(const boussinesqForce&) = delete;
 
 
     // Member Functions
 
         // Checks
 
-            //- Return the list of fields for which the option adds source term
-            //  to the transport equation
+            //- Return the list of fields for which the fvModel adds source
+            //  term to the transport equation
             virtual wordList addSupFields() const;
-
-
-        // Correct
-
-            //- This does nothing
-            virtual void correct();
 
 
         // Add explicit and implicit contributions to compressible equation
 
-            //- Add implicit contribution to mixture momentum equation
+            //- Add the buoyancy force to the mixture momentum equation
             virtual void addSup
             (
                 const volScalarField& rho,

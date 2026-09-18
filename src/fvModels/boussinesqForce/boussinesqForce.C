@@ -24,25 +24,18 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "boussinesqForce.H"
+#include "fvMatrix.H"
 #include "addToRunTimeSelectionTable.H"
-#include "fvmSup.H"
 
-
-// * * * * * * * * * * * * * Static Member Functions * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
 namespace Foam
 {
-    namespace fv
-    {
-        defineTypeNameAndDebug(boussinesqForce, 0);
-
-        addToRunTimeSelectionTable
-        (
-            fvModel,
-            boussinesqForce,
-            dictionary
-        );
-    }
+namespace fv
+{
+    defineTypeNameAndDebug(boussinesqForce, 0);
+    addToRunTimeSelectionTable(fvModel, boussinesqForce, dictionary);
+}
 }
 
 
@@ -57,7 +50,6 @@ Foam::fv::boussinesqForce::boussinesqForce
 )
 :
     fvModel(sourceName, modelType, mesh, dict),
-
     alpha_
     (
         mesh.lookupObject<volScalarField>
@@ -65,35 +57,16 @@ Foam::fv::boussinesqForce::boussinesqForce
             IOobject::groupName("alpha", dict.lookup<word>("phase"))
         )
     ),
-
     T_(mesh.lookupObject<volScalarField>("T")),
-
     thermo_
     (
         mesh.lookupObject<fluidThermo>
         (
-            IOobject::groupName
-            (
-                physicalProperties::typeName,
-                dict.lookup<word>("phase")
-            )
+            IOobject::groupName(physicalProperties::typeName, alpha_.group())
         )
     ),
-
-    beta_
-    (
-        "beta",
-        dimless/dimTemperature,
-        dict.lookup<scalar>("beta")
-    ),
-
-    T0_
-    (
-        "T0",
-        dimTemperature,
-        dict.lookup<scalar>("T0")
-    ),
-
+    beta_("beta", dimless/dimTemperature, dict.lookup<scalar>("beta")),
+    T0_("T0", dimTemperature, dict.lookup<scalar>("T0")),
     g_
     (
         IOobject
@@ -123,10 +96,6 @@ Foam::wordList Foam::fv::boussinesqForce::addSupFields() const
 }
 
 
-void Foam::fv::boussinesqForce::correct()
-{}
-
-
 void Foam::fv::boussinesqForce::addSup
 (
     const volScalarField& rho,
@@ -143,15 +112,15 @@ void Foam::fv::boussinesqForce::addSup
 }
 
 
-void Foam::fv::boussinesqForce::topoChange(const polyTopoChangeMap& map)
+void Foam::fv::boussinesqForce::topoChange(const polyTopoChangeMap&)
 {}
 
 
-void Foam::fv::boussinesqForce::mapMesh(const polyMeshMap& map)
+void Foam::fv::boussinesqForce::mapMesh(const polyMeshMap&)
 {}
 
 
-void Foam::fv::boussinesqForce::distribute(const polyDistributionMap& map)
+void Foam::fv::boussinesqForce::distribute(const polyDistributionMap&)
 {}
 
 
