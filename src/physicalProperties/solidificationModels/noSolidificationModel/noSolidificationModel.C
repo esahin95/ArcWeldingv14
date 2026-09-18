@@ -33,13 +33,7 @@ namespace Foam
 namespace solidificationModels
 {
     defineTypeNameAndDebug(none, 0);
-
-    addToRunTimeSelectionTable
-    (
-        solidificationModel,
-        none,
-        dictionary
-    );
+    addToRunTimeSelectionTable(solidificationModel, none, dictionary);
 }
 }
 
@@ -60,7 +54,7 @@ Foam::solidificationModels::none::none
 
 Foam::scalar Foam::solidificationModels::none::correct(const bool relax)
 {
-    return 0.0;
+    return 0;
 }
 
 
@@ -70,5 +64,6 @@ void Foam::solidificationModels::none::addSup(fvMatrix<scalar>& eqn) const
 
 void Foam::solidificationModels::none::addSup(fvMatrix<vector>& eqn) const
 {}
+
 
 // ************************************************************************* //

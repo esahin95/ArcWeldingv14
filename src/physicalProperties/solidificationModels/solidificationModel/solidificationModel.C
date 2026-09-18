@@ -25,17 +25,15 @@ License
 
 #include "solidificationModel.H"
 
-
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
-
-const Foam::word
-Foam::solidificationModel::dictName_ = "solidification";
 
 namespace Foam
 {
     defineTypeNameAndDebug(solidificationModel, 0);
     defineRunTimeSelectionTable(solidificationModel, dictionary);
 }
+
+const Foam::word Foam::solidificationModel::dictName_ = "solidification";
 
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
@@ -47,9 +45,7 @@ Foam::solidificationModel::solidificationModel
 )
 :
     physicalProperties(mesh, group),
-
     mesh_(mesh),
-
     thermo_
     (
         mesh.lookupObject<fluidThermo>
@@ -57,19 +53,11 @@ Foam::solidificationModel::solidificationModel
             IOobject::groupName(physicalProperties::typeName, group)
         )
     ),
-
     alpha_
     (
-        mesh.lookupObject<volScalarField>
-        (
-            IOobject::groupName("alpha", group)
-        )
+        mesh.lookupObject<volScalarField>(IOobject::groupName("alpha", group))
     ),
-
-    rho_(mesh.lookupObject<volScalarField>("rho")),
-
     T_(mesh.lookupObject<volScalarField>("T")),
-
     alphaRhoPhi_
     (
         mesh.lookupObject<surfaceScalarField>
@@ -77,7 +65,6 @@ Foam::solidificationModel::solidificationModel
             IOobject::groupName("alphaRhoPhi", group)
         )
     ),
-
     sf_
     (
         IOobject
@@ -87,7 +74,7 @@ Foam::solidificationModel::solidificationModel
             mesh
         ),
         mesh,
-        dimensionedScalar(dimless, 0.0)
+        dimensionedScalar(dimless, 0)
     )
 {}
 

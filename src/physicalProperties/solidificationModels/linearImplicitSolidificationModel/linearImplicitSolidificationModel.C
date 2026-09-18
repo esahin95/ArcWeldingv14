@@ -25,13 +25,9 @@ License
 
 #include "linearImplicitSolidificationModel.H"
 #include "addToRunTimeSelectionTable.H"
-
 #include "fvcDdt.H"
-#include "fvmDiv.H"
+#include "fvmDdt.H"
 #include "fvmSup.H"
-#include "fvcGrad.H"
-
-#include "mathematicalConstants.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -40,17 +36,9 @@ namespace Foam
 namespace solidificationModels
 {
     defineTypeNameAndDebug(linearImplicit, 0);
-
-    addToRunTimeSelectionTable
-    (
-        solidificationModel,
-        linearImplicit,
-        dictionary
-    );
+    addToRunTimeSelectionTable(solidificationModel, linearImplicit, dictionary);
 }
 }
-
-using namespace Foam::constant;
 
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
@@ -62,7 +50,6 @@ Foam::solidificationModels::linearImplicit::linearImplicit
 )
 :
     linearExplicit(mesh, group),
-
     rhoCpLatent_
     (
         IOobject
@@ -72,17 +59,6 @@ Foam::solidificationModels::linearImplicit::linearImplicit
             mesh
         ),
         alpha_*thermo_.rho()*thermo_.Cp()
-    ),
-
-    rhoPhiCpLatent_
-    (
-        IOobject
-        (
-            IOobject::groupName("rhoPhiCpLatent", group),
-            mesh.time().name(),
-            mesh
-        ),
-        alphaRhoPhi_*fvc::interpolate(thermo_.Cp())
     )
 {
     rhoCpLatent_.oldTime();
@@ -91,14 +67,14 @@ Foam::solidificationModels::linearImplicit::linearImplicit
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-
 Foam::scalar
 Foam::solidificationModels::linearImplicit::correct(const bool relax)
 {
     sf_.storePrevIter();
     const volScalarField& sf0 = sf_.prevIter();
 
-    sf_ = max(min((Tliq_ - T_)/(Tliq_ - Tsol_), 1.0), 0.0);
+    sf_ = sfEquilibrium();
+
     if (relax)
     {
         sf_ = relax_*sf_ + (1.0 - relax_)*sf0;
@@ -106,8 +82,7 @@ Foam::solidificationModels::linearImplicit::correct(const bool relax)
 
     alphaSolid_ = alpha_*sf_;
 
-    // Residual
-    return gMax(mag(sf_.v() - sf0.v())().primitiveField());
+    return gMax(mag(sf_.primitiveField() - sf0.primitiveField()));
 }
 
 
@@ -116,9 +91,13 @@ void Foam::solidificationModels::linearImplicit::addSup
     fvMatrix<scalar>& eqn
 ) const
 {
-    const scalar TOL = 1e-6;
+    // Solid fraction bounds of the mushy zone
+    const scalar tol = 1e-6;
+
     rhoCpLatent_ =
-        Lm_/(Tliq_-Tsol_)*alpha_*thermo_.rho()*pos(sf_-TOL)*pos(1.0-TOL-sf_);
+        Lm_/(Tliq_ - Tsol_)*alpha_*thermo_.rho()
+       *pos(sf_ - tol)*pos(1.0 - tol - sf_);
+
     eqn += fvm::ddt(rhoCpLatent_, T_) - fvm::Sp(fvc::ddt(rhoCpLatent_), T_);
 }
 

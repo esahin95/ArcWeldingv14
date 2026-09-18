@@ -22,12 +22,22 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::linearImplicitSolidificationModel
+    Foam::solidificationModels::linearImplicit
 
 Description
+    Solidification with a solid fraction varying linearly between 0 at the
+    liquidus and 1 at the solidus temperature; the latent heat is implicit.
+
+    In the mushy zone the latent heat enters the energy equation as the
+    apparent heat capacity alpha*rho*L/(Tliq - Tsol), implicit in T. The solid
+    fraction is set to its equilibrium value, under-relaxed by relax. The
+    mushy-zone damping and the parameters are those of linearExplicit.
 
 SourceFiles
     linearImplicitSolidificationModel.C
+
+See also
+    Foam::solidificationModels::linearExplicit
 
 \*---------------------------------------------------------------------------*/
 
@@ -40,36 +50,34 @@ SourceFiles
 
 namespace Foam
 {
-
 namespace solidificationModels
 {
 
-
 /*---------------------------------------------------------------------------*\
-                          Class linearImplicitSolidificationModel Declaration
+                       Class linearImplicit Declaration
 \*---------------------------------------------------------------------------*/
 
 class linearImplicit
 :
     public linearExplicit
 {
-
 protected:
 
-    //- apparent heat capacity
-    mutable volScalarField rhoCpLatent_;
+    // Protected Data
 
-    //- Apparent heat capacity flux
-    mutable surfaceScalarField rhoPhiCpLatent_;
+        //- Apparent heat capacity of the latent heat
+        mutable volScalarField rhoCpLatent_;
+
 
 public:
 
     //- Runtime type information
     TypeName("linearImplicit");
 
+
     // Constructors
 
-        //- Construct from components
+        //- Construct for the phase given by group
         linearImplicit(const fvMesh& mesh, const word& group);
 
         //- Disallow default bitwise copy construction
@@ -81,12 +89,15 @@ public:
     {}
 
 
-    // Member functions
+    // Member Functions
 
-        //- Correct solid fraction
+        //- Correct the solid fraction and return its maximum change
         virtual scalar correct(const bool relax=true);
 
-        //- Source term for energy equation
+        //- Momentum damping as linearExplicit
+        using linearExplicit::addSup;
+
+        //- Add the latent heat to the energy equation
         virtual void addSup(fvMatrix<scalar>& eqn) const;
 
 

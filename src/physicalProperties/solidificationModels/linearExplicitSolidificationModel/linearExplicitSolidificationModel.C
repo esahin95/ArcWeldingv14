@@ -25,9 +25,8 @@ License
 
 #include "linearExplicitSolidificationModel.H"
 #include "addToRunTimeSelectionTable.H"
-
 #include "fvcDdt.H"
-#include "fvmDiv.H"
+#include "fvcDiv.H"
 #include "fvmSup.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
@@ -37,14 +36,17 @@ namespace Foam
 namespace solidificationModels
 {
     defineTypeNameAndDebug(linearExplicit, 0);
-
-    addToRunTimeSelectionTable
-    (
-        solidificationModel,
-        linearExplicit,
-        dictionary
-    );
+    addToRunTimeSelectionTable(solidificationModel, linearExplicit, dictionary);
 }
+}
+
+
+// * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
+
+Foam::tmp<Foam::volScalarField>
+Foam::solidificationModels::linearExplicit::sfEquilibrium() const
+{
+    return max(min((Tliq_ - T_)/(Tliq_ - Tsol_), 1.0), 0.0);
 }
 
 
@@ -57,41 +59,13 @@ Foam::solidificationModels::linearExplicit::linearExplicit
 )
 :
     solidificationModel(mesh, group),
-
     dict_(subDict(dictName_)),
-
-    Lm_
-    (
-        "L",
-        dimEnergy/dimMass,
-        dict_.lookup<scalar>("L")
-    ),
-
-    Tliq_
-    (
-        "Tliq",
-        dimTemperature,
-        dict_.lookup<scalar>("Tliq")
-    ),
-
-    Tsol_
-    (
-        "Tsol",
-        dimTemperature,
-        dict_.lookup<scalar>("Tsol")
-    ),
-
-    Cu_
-    (
-        "Cu",
-        dimDensity/dimTime,
-        dict_.lookupOrDefault<scalar>("Cu", 1e5)
-    ),
-
+    Lm_("L", dimEnergy/dimMass, dict_.lookup<scalar>("L")),
+    Tliq_("Tliq", dimTemperature, dict_.lookup<scalar>("Tliq")),
+    Tsol_("Tsol", dimTemperature, dict_.lookup<scalar>("Tsol")),
+    Cu_("Cu", dimDensity/dimTime, dict_.lookupOrDefault<scalar>("Cu", 1e5)),
     q_(dict_.lookupOrDefault<scalar>("q", 0.001)),
-
     relax_(dict_.lookupOrDefault<scalar>("relax", 1.0)),
-
     alphaSolid_
     (
         IOobject
@@ -103,13 +77,14 @@ Foam::solidificationModels::linearExplicit::linearExplicit
             IOobject::AUTO_WRITE
         ),
         mesh,
-        dimensionedScalar(dimless, 0.0)
+        dimensionedScalar(dimless, 0)
     )
 {
     if (solidificationModel::debug)
     {
-        const dimensionedScalar minSt
-            = gMin((thermo_.Cp()*(Tliq_ - Tsol_)/Lm_)().primitiveField());
+        const dimensionedScalar minSt =
+            gMin((thermo_.Cp()*(Tliq_ - Tsol_)/Lm_)().primitiveField());
+
         Info<< "Minimum Stefan number St = " << minSt.value() << endl;
     }
 
@@ -125,29 +100,28 @@ Foam::solidificationModels::linearExplicit::correct(const bool relax)
     sf_.storePrevIter();
     const volScalarField& sf0 = sf_.prevIter();
 
-    // Relaxation
     if (relax)
     {
-        sf_ = sf_ + relax_*thermo_.Cp()/Lm_*(Tliq_-T_ - sf_*(Tliq_-Tsol_));
+        sf_ += relax_*thermo_.Cp()/Lm_*(Tliq_ - T_ - sf_*(Tliq_ - Tsol_));
         sf_ = max(min(sf_, 1.0), 0.0);
     }
     else
     {
-        sf_ = max(min((Tliq_ - T_)/(Tliq_ - Tsol_), 1.0), 0.0);
+        sf_ = sfEquilibrium();
     }
+
     alphaSolid_ = alpha_*sf_;
 
     if (debug)
     {
-        const volScalarField sfEq =
-            max(min((Tliq_ - T_)/(Tliq_ - Tsol_), 1.0), 0.0);
+        const volScalarField sfEq(sfEquilibrium());
 
         Info<< "Difference to equilibrium res = "
-        << gMax(mag(sf_.v() - sfEq.v())().primitiveField()) << endl;
+            << gMax(mag(sf_.primitiveField() - sfEq.primitiveField()))
+            << endl;
     }
 
-    // Residual
-    return gMax(mag(sf_.v() - sf0.v())().primitiveField());
+    return gMax(mag(sf_.primitiveField() - sf0.primitiveField()));
 }
 
 
@@ -156,8 +130,9 @@ void Foam::solidificationModels::linearExplicit::addSup
     fvMatrix<scalar>& eqn
 ) const
 {
-    eqn -= Lm_*
-        (
+    eqn -=
+        Lm_
+       *(
             fvc::ddt(alpha_, thermo_.rho(), sf_)
           + fvc::div(alphaRhoPhi_, sf_)
         );
@@ -170,10 +145,11 @@ void Foam::solidificationModels::linearExplicit::addSup
 ) const
 {
     eqn += fvm::Sp
-        (
-            Cu_*sqr(alphaSolid_)/(pow3(1.0 - alphaSolid_) + q_),
-            eqn.psi()
-        );
+    (
+        Cu_*sqr(alphaSolid_)/(pow3(1.0 - alphaSolid_) + q_),
+        eqn.psi()
+    );
 }
+
 
 // ************************************************************************* //

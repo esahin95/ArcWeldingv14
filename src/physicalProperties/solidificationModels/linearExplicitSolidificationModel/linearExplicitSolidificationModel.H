@@ -22,9 +22,29 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::linearExplicitSolidificationModel
+    Foam::solidificationModels::linearExplicit
 
 Description
+    Solidification with a solid fraction varying linearly between 0 at the
+    liquidus and 1 at the solidus temperature; the latent heat is explicit.
+
+    The latent heat release L*D(alpha*rho*s)/Dt is added explicitly to the
+    energy equation. Within the temperature corrections the solid fraction
+    is moved towards its equilibrium value s_eq by relax*St*(s_eq - s), with
+    the Stefan number St = Cp*(Tliq - Tsol)/L. The flow is damped in the
+    mushy zone by the Carman-Kozeny sink Cu*a^2/((1 - a)^3 + q) on U, where
+    a = alpha*s is written as \c alpha.solid.<phase>.
+
+Usage
+    \table
+        Property | Description                       | Required | Default
+        L        | Latent heat of fusion             | yes      |
+        Tliq     | Liquidus temperature              | yes      |
+        Tsol     | Solidus temperature               | yes      |
+        Cu       | Mushy-zone damping constant       | no       | 1e5
+        q        | Damping regularisation constant   | no       | 1e-3
+        relax    | Solid fraction relaxation factor  | no       | 1
+    \endtable
 
 SourceFiles
     linearExplicitSolidificationModel.C
@@ -40,13 +60,11 @@ SourceFiles
 
 namespace Foam
 {
-
 namespace solidificationModels
 {
 
-
 /*---------------------------------------------------------------------------*\
-                          Class linearExplicitSolidificationModel Declaration
+                       Class linearExplicit Declaration
 \*---------------------------------------------------------------------------*/
 
 class linearExplicit
@@ -55,23 +73,37 @@ class linearExplicit
 {
 protected:
 
-    // Solidification properties
+    // Protected Data
 
-        //- Solidification properties dictionary
+        //- Model coefficients dictionary
         const dictionary& dict_;
 
-        //- Physical parameters
+        //- Latent heat of fusion
         const dimensionedScalar Lm_;
+
+        //- Liquidus temperature
         const dimensionedScalar Tliq_;
+
+        //- Solidus temperature
         const dimensionedScalar Tsol_;
 
-        //- Numerical parameters
+        //- Mushy-zone damping constant
         const dimensionedScalar Cu_;
+
+        //- Damping regularisation constant
         const scalar q_;
+
+        //- Solid fraction relaxation factor
         const scalar relax_;
 
-    //- Alpha solid fraction
-    volScalarField alphaSolid_;
+        //- Solid volume fraction, alpha*s
+        volScalarField alphaSolid_;
+
+
+    // Protected Member Functions
+
+        //- Return the equilibrium solid fraction at the current temperature
+        tmp<volScalarField> sfEquilibrium() const;
 
 
 public:
@@ -79,9 +111,10 @@ public:
     //- Runtime type information
     TypeName("linearExplicit");
 
+
     // Constructors
 
-        //- Construct from components
+        //- Construct for the phase given by group
         linearExplicit(const fvMesh& mesh, const word& group);
 
         //- Disallow default bitwise copy construction
@@ -93,15 +126,15 @@ public:
     {}
 
 
-    // Member functions
+    // Member Functions
 
-        //- Correct solid fraction
+        //- Correct the solid fraction and return its maximum change
         virtual scalar correct(const bool relax=true);
 
-        //- Source term for energy equation
+        //- Add the latent heat source to the energy equation
         virtual void addSup(fvMatrix<scalar>& eqn) const;
 
-        //- Source term for momentum equation
+        //- Add the mushy-zone damping to the momentum equation
         virtual void addSup(fvMatrix<vector>& eqn) const;
 
 

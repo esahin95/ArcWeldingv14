@@ -25,9 +25,8 @@ License
 
 #include "solidificationModel.H"
 #include "noSolidificationModel.H"
-#include "fvMesh.H"
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * * //
 
 Foam::autoPtr<Foam::solidificationModel> Foam::solidificationModel::New
 (
@@ -35,42 +34,36 @@ Foam::autoPtr<Foam::solidificationModel> Foam::solidificationModel::New
     const word& group
 )
 {
-    const IOdictionary dict
-    (
-        solidificationModel::findModelDict(mesh, group)
-    );
+    const IOdictionary dict(findModelDict(mesh, group));
 
-    if (dict.isDict(dictName_))
+    if (!dict.isDict(dictName_))
     {
-        const dictionary& modelDict = dict.subDict(dictName_);
+        Info<< "There is no " << dictName_ << " dictionary" << nl
+            << "Selecting default solidification model none" << endl;
 
-        const word modelType(modelDict.lookup("type"));
-
-        Info<< "Selecting solidification model " << modelType << endl;
-
-        dictionaryConstructorTable::iterator cstrIter =
-            dictionaryConstructorTablePtr_->find(modelType);
-
-        if (cstrIter == dictionaryConstructorTablePtr_->end())
-        {
-            FatalIOErrorInFunction(dict)
-                << "Unknown solidification model " << modelType << nl << nl
-                << "Valid solidification models are : " << endl
-                << dictionaryConstructorTablePtr_->sortedToc()
-                << exit(FatalIOError);
-        }
-
-        return autoPtr<solidificationModel>(cstrIter()(mesh, group));
-    }
-    else
-    {
-        Info<<"There is no " << dictName_ << " dictionary"<<endl;
-        Info<<"Selecting default solidification model none"<<endl;
         return autoPtr<solidificationModel>
         (
             new solidificationModels::none(mesh, group)
         );
     }
+
+    const word modelType(dict.subDict(dictName_).lookup("type"));
+
+    Info<< "Selecting solidification model " << modelType << endl;
+
+    dictionaryConstructorTable::iterator cstrIter =
+        dictionaryConstructorTablePtr_->find(modelType);
+
+    if (cstrIter == dictionaryConstructorTablePtr_->end())
+    {
+        FatalIOErrorInFunction(dict)
+            << "Unknown solidification model " << modelType << nl << nl
+            << "Valid solidification models are : " << endl
+            << dictionaryConstructorTablePtr_->sortedToc()
+            << exit(FatalIOError);
+    }
+
+    return autoPtr<solidificationModel>(cstrIter()(mesh, group));
 }
 
 

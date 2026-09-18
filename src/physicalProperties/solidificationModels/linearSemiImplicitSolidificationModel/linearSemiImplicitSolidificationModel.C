@@ -25,12 +25,8 @@ License
 
 #include "linearSemiImplicitSolidificationModel.H"
 #include "addToRunTimeSelectionTable.H"
-
 #include "fvcDdt.H"
-#include "fvmDiv.H"
 #include "fvmSup.H"
-
-#include "mathematicalConstants.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -39,7 +35,6 @@ namespace Foam
 namespace solidificationModels
 {
     defineTypeNameAndDebug(linearSemiImplicit, 0);
-
     addToRunTimeSelectionTable
     (
         solidificationModel,
@@ -49,7 +44,63 @@ namespace solidificationModels
 }
 }
 
-using namespace Foam::constant;
+
+// * * * * * * * * * * * * * * * Local Functions * * * * * * * * * * * * * * //
+
+namespace
+{
+
+// Set the slope dsdT and temperature T0 linearising the solid fraction s at
+// temperature T
+void linearise
+(
+    const Foam::scalar T,
+    const Foam::scalar s,
+    const Foam::scalar Tliq,
+    const Foam::scalar Tsol,
+    Foam::scalar& dsdT,
+    Foam::scalar& T0
+)
+{
+    // Slope driving the solid fraction back to its bounds outside the
+    // mushy zone
+    const Foam::scalar slope = 1e10;
+    const Foam::scalar tol = 1e-3;
+
+    if (T > Tliq)
+    {
+        if (s > tol)
+        {
+            dsdT = slope;
+            T0 = Tliq - tol;
+        }
+        else
+        {
+            dsdT = 0;
+            T0 = T;
+        }
+    }
+    else if (T < Tsol)
+    {
+        if (s < 1.0 - tol)
+        {
+            dsdT = slope;
+            T0 = Tsol + tol;
+        }
+        else
+        {
+            dsdT = 0;
+            T0 = T;
+        }
+    }
+    else
+    {
+        dsdT = -1.0/(Tliq - Tsol);
+        T0 = Tsol + (s - 1.0)/dsdT;
+    }
+}
+
+}
 
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
@@ -61,7 +112,6 @@ Foam::solidificationModels::linearSemiImplicit::linearSemiImplicit
 )
 :
     linearExplicit(mesh, group),
-
     T0_
     (
         IOobject
@@ -72,7 +122,6 @@ Foam::solidificationModels::linearSemiImplicit::linearSemiImplicit
         ),
         T_
     ),
-
     dsdT_
     (
         IOobject
@@ -82,29 +131,28 @@ Foam::solidificationModels::linearSemiImplicit::linearSemiImplicit
             mesh
         ),
         mesh,
-        dimensionedScalar(dimless/dimTemperature, 0.0)
+        dimensionedScalar(dimless/dimTemperature, 0)
     )
 {}
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-
 Foam::scalar
 Foam::solidificationModels::linearSemiImplicit::correct(const bool relax)
 {
     const volScalarField sf0("sf0", sf_);
 
-    sf_ = max(min(sf0 + dsdT_*(T_-T0_), 1.0), 0.0);
+    sf_ = max(min(sf0 + dsdT_*(T_ - T0_), 1.0), 0.0);
+
     if (relax)
     {
-        sf_ = relax_*sf_ + (1.0-relax_)*sf0;
+        sf_ = relax_*sf_ + (1.0 - relax_)*sf0;
     }
 
     alphaSolid_ = alpha_*sf_;
 
-    // Residual
-    return gMax(mag(sf_.v().primitiveField() - sf0.v().primitiveField()));
+    return gMax(mag(sf_.primitiveField() - sf0.primitiveField()));
 }
 
 
@@ -113,95 +161,38 @@ void Foam::solidificationModels::linearSemiImplicit::addSup
     fvMatrix<scalar>& eqn
 ) const
 {
-    // Update slope
-    dsdT_ = 1.0/(Tliq_ - Tsol_);
-    const scalar slope = 1e10;
-    const scalar tol = 1e-3;
+    const scalar Tliq = Tliq_.value();
+    const scalar Tsol = Tsol_.value();
 
-    forAll(dsdT_, cellI)
+    // Linearise the solid fraction in the cells ...
+    forAll(dsdT_, celli)
     {
-        const scalar T = T_[cellI];
-        const scalar s = sf_[cellI];
-        if (T > Tliq_.value())
+        linearise(T_[celli], sf_[celli], Tliq, Tsol, dsdT_[celli], T0_[celli]);
+    }
+
+    // ... and on the boundary faces
+    forAll(T_.boundaryField(), patchi)
+    {
+        const fvPatchScalarField& Tp = T_.boundaryField()[patchi];
+        const fvPatchScalarField& sfp = sf_.boundaryField()[patchi];
+        fvPatchScalarField& dsdTp = dsdT_.boundaryFieldRef()[patchi];
+        fvPatchScalarField& T0p = T0_.boundaryFieldRef()[patchi];
+
+        forAll(Tp, facei)
         {
-            if (s > tol)
-            {
-                dsdT_[cellI] = slope;
-                T0_[cellI] = Tliq_.value() - tol;
-            }
-            else
-            {
-                dsdT_[cellI] = 0.0;
-                T0_[cellI] = T;
-            }
-        }
-        else if (T < Tsol_.value())
-        {
-            if (s < 1.0 - tol)
-            {
-                dsdT_[cellI] = slope;
-                T0_[cellI] = Tsol_.value() + tol;
-            }
-            else
-            {
-                dsdT_[cellI] = 0.0;
-                T0_[cellI] = T;
-            }
-        }
-        else
-        {
-            dsdT_[cellI] = -1.0/(Tliq_-Tsol_).value();
-            T0_[cellI] = Tsol_.value() + (s - 1.0)/dsdT_[cellI];
+            linearise
+            (
+                Tp[facei],
+                sfp[facei],
+                Tliq,
+                Tsol,
+                dsdTp[facei],
+                T0p[facei]
+            );
         }
     }
 
-    const volScalarField::Boundary& TBoundary = T_.boundaryField();
-    forAll(TBoundary, patchI)
-    {
-        const fvPatchField<scalar>& TPatch = TBoundary[patchI];
-        const fvPatchField<scalar>& sfPatch = sf_.boundaryField()[patchI];
-        fvPatchField<scalar>& T0Patch = T0_.boundaryFieldRef()[patchI];
-        fvPatchField<scalar>& dsdTPatch = dsdT_.boundaryFieldRef()[patchI];
-        forAll(TPatch, faceI)
-        {
-            const scalar T = TPatch[faceI];
-            const scalar s = sfPatch[faceI];
-
-            if (T > Tliq_.value())
-            {
-                if (s > tol)
-                {
-                    dsdTPatch[faceI] = slope;
-                    T0Patch[faceI] = Tliq_.value() - tol;
-                }
-                else
-                {
-                    dsdTPatch[faceI] = 0.0;
-                    T0Patch[faceI] = T;
-                }
-            }
-            else if (T < Tsol_.value())
-            {
-                if (s < 1.0 - tol)
-                {
-                    dsdTPatch[faceI] = slope;
-                    T0Patch[faceI] = Tsol_.value() + tol;
-                }
-                else
-                {
-                    dsdTPatch[faceI] = 0.0;
-                    T0Patch[faceI] = T;
-                }
-            }
-            else
-            {
-                dsdTPatch[faceI] = -1.0/(Tliq_-Tsol_).value();
-                T0Patch[faceI] = Tsol_.value() + (s - 1.0)/dsdTPatch[faceI];
-            }
-        }
-    }
-
-    const dimensionedScalar rDeltaT = 1.0 / mesh_.time().deltaT();
+    const dimensionedScalar rDeltaT = 1.0/mesh_.time().deltaT();
 
     eqn -=
     (

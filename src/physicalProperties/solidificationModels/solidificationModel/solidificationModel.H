@@ -25,11 +25,29 @@ Class
     Foam::solidificationModel
 
 Description
+    Base class for solidification models of a VoF phase.
+
+    The model is selected from the optional \c solidification sub-dictionary
+    of the phase physicalProperties; without it no solidification is
+    modelled (\c none). A model maintains the solid fraction of the phase,
+    \c solid.<phase>, and provides the corresponding source terms for the
+    energy and momentum equations.
+
+Usage
+    In constant/physicalProperties.<phase>:
+    \verbatim
+    solidification
+    {
+        type    linearImplicit;
+        L       2.7e5;
+        Tsol    1650;
+        Tliq    1700;
+    }
+    \endverbatim
 
 SourceFiles
-    solidificationModelI.H
     solidificationModel.C
-    solidificationModelIO.C
+    solidificationModelNew.C
 
 \*---------------------------------------------------------------------------*/
 
@@ -37,10 +55,9 @@ SourceFiles
 #define solidificationModel_H
 
 #include "physicalProperties.H"
-#include "dimensionedTypes.H"
+#include "fluidThermo.H"
 #include "volFields.H"
 #include "fvMatrix.H"
-#include "fluidThermo.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -48,7 +65,7 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                          Class solidificationModel Declaration
+                     Class solidificationModel Declaration
 \*---------------------------------------------------------------------------*/
 
 class solidificationModel
@@ -57,10 +74,10 @@ class solidificationModel
 {
 protected:
 
-    // Solidification dictionary name
-    static const word dictName_;
+    // Protected Data
 
-    // References to database
+        //- Name of the model sub-dictionary
+        static const word dictName_;
 
         //- Reference to the mesh
         const fvMesh& mesh_;
@@ -68,24 +85,17 @@ protected:
         //- Reference to the phase thermo
         const fluidThermo& thermo_;
 
-
-    // References to fields
-
-        //- Fluid fraction
+        //- Phase fraction
         const volScalarField& alpha_;
-
-        //- Density
-        const volScalarField& rho_;
 
         //- Temperature
         const volScalarField& T_;
 
-        //- Mass flux
+        //- Phase mass flux
         const surfaceScalarField& alphaRhoPhi_;
 
-
-    //- Solid fraction
-    volScalarField sf_;
+        //- Solid fraction of the phase
+        volScalarField sf_;
 
 
 public:
@@ -111,7 +121,7 @@ public:
 
     // Constructors
 
-        //- Construct from components
+        //- Construct for the phase given by group
         solidificationModel(const fvMesh& mesh, const word& group);
 
         //- Disallow default bitwise copy construction
@@ -120,7 +130,7 @@ public:
 
     // Selectors
 
-        //- Return a reference to the selected viscosity model
+        //- Select the solidification model of the phase given by group
         static autoPtr<solidificationModel> New
         (
             const fvMesh& mesh,
@@ -132,16 +142,18 @@ public:
     virtual ~solidificationModel()
     {}
 
+
     // Member Functions
 
-        //- Correct solid fraction
+        //- Correct the solid fraction and return its maximum change
         virtual scalar correct(const bool relax=true) = 0;
 
-        //- Source term for energy equation
+        //- Add the latent heat source to the energy equation
         virtual void addSup(fvMatrix<scalar>& eqn) const = 0;
 
-        //- Source term for momentum equation
+        //- Add the solid damping source to the momentum equation
         virtual void addSup(fvMatrix<vector>& eqn) const = 0;
+
 
     // Member Operators
 

@@ -22,12 +22,25 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::linearSemiImplicitSolidificationModel
+    Foam::solidificationModels::linearSemiImplicit
 
 Description
+    Solidification with a solid fraction varying linearly between 0 at the
+    liquidus and 1 at the solidus temperature; the latent heat is linearised
+    in the temperature.
+
+    Within the temperature corrections the solid fraction is updated as
+    s = s0 + dsdT*(T - T0), where the slope dsdT and temperature T0 linearise
+    the solid fraction about the current state. Outside the mushy zone a
+    large slope drives the solid fraction back to 0 or 1. The latent heat
+    source is split into a part implicit in T and an explicit remainder. The
+    mushy-zone damping and the parameters are those of linearExplicit.
 
 SourceFiles
     linearSemiImplicitSolidificationModel.C
+
+See also
+    Foam::solidificationModels::linearExplicit
 
 \*---------------------------------------------------------------------------*/
 
@@ -40,27 +53,26 @@ SourceFiles
 
 namespace Foam
 {
-
 namespace solidificationModels
 {
 
-
 /*---------------------------------------------------------------------------*\
-                          Class linearSemiImplicitSolidificationModel Declaration
+                     Class linearSemiImplicit Declaration
 \*---------------------------------------------------------------------------*/
 
 class linearSemiImplicit
 :
     public linearExplicit
 {
-
 protected:
 
-    //- Consistent temperature field
-    mutable volScalarField T0_;
+    // Protected Data
 
-    //- Solid fraction slope
-    mutable volScalarField dsdT_;
+        //- Linearisation temperature
+        mutable volScalarField T0_;
+
+        //- Slope of the solid fraction with respect to temperature
+        mutable volScalarField dsdT_;
 
 
 public:
@@ -68,9 +80,10 @@ public:
     //- Runtime type information
     TypeName("linearSemiImplicit");
 
+
     // Constructors
 
-        //- Construct from components
+        //- Construct for the phase given by group
         linearSemiImplicit(const fvMesh& mesh, const word& group);
 
         //- Disallow default bitwise copy construction
@@ -82,12 +95,15 @@ public:
     {}
 
 
-    // Member functions
+    // Member Functions
 
-        //- Correct solid fraction
+        //- Correct the solid fraction and return its maximum change
         virtual scalar correct(const bool relax=true);
 
-        //- Source term for energy equation
+        //- Momentum damping as linearExplicit
+        using linearExplicit::addSup;
+
+        //- Add the linearised latent heat source to the energy equation
         virtual void addSup(fvMatrix<scalar>& eqn) const;
 
 

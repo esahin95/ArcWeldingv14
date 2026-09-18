@@ -22,9 +22,11 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::noSolidificationModel
+    Foam::solidificationModels::none
 
 Description
+    No solidification: the solid fraction remains zero and no source terms
+    are added.
 
 SourceFiles
     noSolidificationModel.C
@@ -40,28 +42,26 @@ SourceFiles
 
 namespace Foam
 {
-
 namespace solidificationModels
 {
 
-
 /*---------------------------------------------------------------------------*\
-                          Class noSolidificationModel Declaration
+                            Class none Declaration
 \*---------------------------------------------------------------------------*/
 
 class none
 :
     public solidificationModel
 {
-
 public:
 
     //- Runtime type information
     TypeName("none");
 
+
     // Constructors
 
-        //- Construct from components
+        //- Construct for the phase given by group
         none(const fvMesh& mesh, const word& group);
 
         //- Disallow default bitwise copy construction
@@ -72,16 +72,18 @@ public:
     virtual ~none()
     {}
 
-    // Member functions
 
-        //- Correct solid fraction
+    // Member Functions
+
+        //- Correct the solid fraction; does nothing
         virtual scalar correct(const bool relax=true);
 
-        //- Source term for energy equation
+        //- Add the latent heat source; does nothing
         virtual void addSup(fvMatrix<scalar>& eqn) const;
 
-        //- Source term for momentum equation
+        //- Add the solid damping source; does nothing
         virtual void addSup(fvMatrix<vector>& eqn) const;
+
 
     // Member Operators
 
