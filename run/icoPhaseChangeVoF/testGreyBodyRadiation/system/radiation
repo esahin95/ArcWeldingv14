@@ -1,0 +1,62 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  13
+     \\/     M anipulation  |
+-------------------------------------------------------------------------------
+Description
+    Computes the exact evaporation heat flux
+
+\*---------------------------------------------------------------------------*/
+
+libs     ("libutilityFunctionObjects.so");
+type     coded;
+
+writeControl writeTime;
+
+// Access evaporation parameters
+eps     ${${FOAM_CASE}/constant/fvModels!radiation/eps};
+T0      ${${FOAM_CASE}/constant/fvModels!radiation/T0};
+TP      ${${FOAM_CASE}/system/setFieldsDict!zones/plate/values/T};
+
+codeInclude
+#{
+    #include "volFields.H"
+    #include "fvcVolumeIntegrate.H"
+    #include "fvcGrad.H"
+    #include "physicoChemicalConstants.H"
+#};
+
+codeOptions
+#{
+#};
+
+codeLibs
+#{
+#};
+
+codeFields
+#{
+    fields.append("alpha.water");
+#};
+
+codeWrite
+#{
+    // Read fields
+    const volScalarField& alpha = mesh().lookupObject<volScalarField>(fields()[0]);
+
+    // Total area
+    const dimensionedScalar A = fvc::domainIntegrate(mag(fvc::grad(alpha)));
+
+    // Constants
+    const scalar eps = $eps * constant::physicoChemical::sigma.value();
+    const scalar TP = $TP;
+    const scalar T0 = $T0;
+
+    // Heat flux
+    const scalar Q = - eps * A.value() * (pow4(TP) - pow4(T0));
+    Info<< "Grey body radiation Q = " << Q << endl;
+#};
+
+// ************************************************************************* //

@@ -1,0 +1,33 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  13
+     \\/     M anipulation  |
+-------------------------------------------------------------------------------
+Description
+    Writes out the maximum cell value for one or more fields.
+
+\*---------------------------------------------------------------------------*/
+
+type            phaseScalarTransport;
+
+libs            ("libsolverFunctionObjects.so");
+
+field           heat.water;
+
+schemesField    heat.water;
+
+p               p;
+
+alpha           alpha.water;
+
+alphaPhi        alphaPhi.water;
+
+diffusivity     constant;
+
+D               1.4285e-6;
+
+writeControl    writeTime;
+
+// ************************************************************************* //

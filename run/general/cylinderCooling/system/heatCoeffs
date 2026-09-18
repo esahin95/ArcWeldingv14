@@ -1,0 +1,76 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  13
+     \\/     M anipulation  |
+-------------------------------------------------------------------------------
+Description
+    Writes a volVectorField of grad(p)
+
+\*---------------------------------------------------------------------------*/
+
+libs     ("libutilityFunctionObjects.so");
+type     coded;
+
+writeControl writeTime;
+
+Ta      ${${FOAM_CASE}/0/T!Tinlet};
+T       ${${FOAM_CASE}/0/T!Twall};
+
+codeInclude
+#{
+    // Header files for classes and functions, e.g. for fvc::grad
+    #include "thermophysicalTransportModel.H"
+#};
+
+// Header file paths for Make/options, e.g. for momentum transport models
+// Example:
+// -I$(LIB_SRC)/MomentumTransportModels/incompressible/lnInclude
+codeOptions
+#{
+    -I$(LIB_SRC)/ThermophysicalTransportModels/thermophysicalTransportModel/lnInclude
+#};
+
+// Linked libraries for Make/options, e.g. for momentum transport models
+// Not usually required since libraries are already linked to the solver
+// Example:
+// -lincompressibleMomentumTransportModels
+codeLibs
+#{
+#};
+
+codeFields
+#{
+    // Read fields when executing function objects with "foamPostProcess"
+    fields.append("p");
+#};
+
+codeWrite
+#{
+    const thermophysicalTransportModel& ttm =
+        lookupObject<thermophysicalTransportModel>
+        (
+            "thermophysicalTransport"
+        );
+
+    surfaceScalarField hT
+    (
+        "hT",
+        - ttm.q()() / dimensionedScalar(dimTemperature, $T - $Ta)
+    );
+
+    const label patchi(mesh().boundary().findIndex("cylinder"));
+
+    const scalarField& magSf = mesh().boundary()[patchi].magSf();
+
+    const scalarField& hp = hT.boundaryField()[patchi];
+
+    const scalar hMean = gSum(hp * magSf) / gSum(magSf);
+
+    Info<< "Mean h = " << hMean << endl;
+
+    hT.write();
+#};
+
+// ************************************************************************* //

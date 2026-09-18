@@ -1,0 +1,27 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  13
+     \\/     M anipulation  |
+-------------------------------------------------------------------------------
+Description
+    Writes out the divergence of the velocity field.
+
+\*---------------------------------------------------------------------------*/
+
+type            div;
+
+libs            ("libfieldFunctionObjects.so");
+
+writeControl    writeTime;
+
+writeFields     false;
+
+regionType      all;
+
+result          divU;
+
+field           phi;
+
+// ************************************************************************* //

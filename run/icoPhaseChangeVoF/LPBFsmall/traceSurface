@@ -1,0 +1,22 @@
+#!/bin/sh
+cd ${0%/*} || exit 1    # Run from this directory
+
+# Source tutorial run functions
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+foamCleanTutorials cases
+
+# pre-processing
+runApplication blockMesh
+runApplication setFields
+
+runApplication decomposePar
+foamPostProcess -func "layerHeight" -latestTime > log.layerHeight
+foamPostProcess -func "fillFraction" -latestTime > log.fillFraction
+runApplication reconstructPar
+
+. $WM_PROJECT_USER_DIR/.venv/bin/activate
+python3 surf.py
+deactivate
+
+#------------------------------------------------------------------------------

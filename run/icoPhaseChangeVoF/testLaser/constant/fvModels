@@ -1,0 +1,50 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  13
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      fvModels;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+laser
+{
+    type laserDTRM;
+
+    phase air;
+
+    absorption 1e+2;
+
+    powerModel
+    {
+        type    random;
+
+        radius  0.1;
+        position constant (0.5 1.5 0.0);
+        normal (0.0 -1.0 0.0);
+
+        Q       1.0;
+        powerDist constant 1;
+        nRays   400;
+    };
+
+    reflectionModel
+    {
+        type    fresnelLorentzDrude;
+
+        N       5.83e29;
+        sigma   1e6;
+        lambda  1.064e-6;
+    };
+
+    setFormat vtk;
+}
+
+//************************************************************************ //

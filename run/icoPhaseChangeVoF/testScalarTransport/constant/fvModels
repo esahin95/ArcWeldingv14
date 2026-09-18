@@ -1,0 +1,39 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  13
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      fvModels;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+boussinesq
+{
+    type    BoussinesqForce;
+
+    phase   water;
+
+    beta    2e-2;
+
+    T0      300;
+}
+
+boussinesqGas
+{
+    type    BoussinesqForce;
+
+    phase   air;
+
+    beta    0;
+
+    T0      300;
+}
+
+//************************************************************************ //

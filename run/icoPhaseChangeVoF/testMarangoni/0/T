@@ -1,0 +1,84 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  10
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       volScalarField;
+    object      T;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 0 0 1 0 0 0];
+
+internalField   #codeStream
+{
+    codeInclude
+    #{
+        #include "fvMesh.H"
+        #include "volFields.H"
+    #};
+
+    codeOptions
+    #{
+        -I$(LIB_SRC)/finiteVolume/lnInclude \
+        -I$(LIB_SRC)/meshTools/lnInclude
+    #};
+    
+    codeLibs
+    #{
+        -lmeshTools \
+        -lfiniteVolume
+    #};
+
+    code
+    #{
+        const IOdictionary& d = static_cast<const IOdictionary&>(dict);
+        const fvMesh& mesh = refCast<const fvMesh>(d.db());
+
+        scalar lx = 0.001;
+        scalar dT = 4.0;
+        scalar T0 = 300.0;
+
+        scalarField T(mesh.nCells(), 0.0);
+        scalarField X(mesh.C().component(0));
+        forAll(T, cellI)
+        {
+            T[cellI] = T0 + (0.5 * lx - X[cellI]) / lx * dT;
+        }
+
+        writeEntry(os, "", T);
+    #};
+};
+
+boundaryField
+{
+    "(top|bottom)"
+    {
+        type            zeroGradient;
+    }
+
+    right
+    {
+        type            fixedValue;
+        value           uniform 298;
+    }
+    
+    left
+    {
+        type            fixedValue;
+        value           uniform 302;
+    }
+
+    "(front|back)"
+    {
+        type            empty;
+    }
+}
+
+
+// ************************************************************************* //

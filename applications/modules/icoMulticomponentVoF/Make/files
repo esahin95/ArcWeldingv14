@@ -1,0 +1,9 @@
+multicomponentVoFMixture/multicomponentVoFMixture.C
+
+alphaPredictor.C
+momentumPredictor.C
+thermophysicalPredictor.C
+pressureCorrector.C
+icoMulticomponentVoF.C
+
+LIB = $(FOAM_USER_LIBBIN)/libicoMulticomponentVoF

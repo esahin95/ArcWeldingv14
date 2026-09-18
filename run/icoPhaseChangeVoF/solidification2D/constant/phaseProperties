@@ -1,0 +1,36 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  13
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      phaseProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+phases          ( bismuth argon );
+
+
+sigma
+{
+  type  temperatureDependent;
+  sigma
+  {
+    type    table;
+    values
+    (
+        (544 0.365)
+        (644 0.358)
+    );
+    outOfBounds         clamp;
+    interpolationScheme linear;
+  }
+}
+
+// ************************************************************************* //

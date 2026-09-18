@@ -1,0 +1,32 @@
+// Description
+//   Calculates specific gas constant and reference density
+
+libs     ("libutilityFunctionObjects.so");
+
+type     coded;
+
+M         ${${FOAM_CASE}/constant/physicalProperties!mixture/specie/molWeight};
+pInf      ${${FOAM_CASE}/0/p!pRef};
+TInf      ${${FOAM_CASE}/0/T!Tinlet};
+mu        ${${FOAM_CASE}/constant/physicalProperties!mixture/transport/mu};
+
+magU      ${${FOAM_CASE}/0/U!Uinlet};
+diameter  ${${FOAM_CASE}/system/blockMeshDict!diameter};
+
+codeInclude
+#{
+    #include "constants.H"
+    using namespace Foam::constant::thermodynamic;
+#};
+
+codeExecute
+#{
+    const scalar R = RR / $M;
+    const scalar rhoInf = $pInf / (R*$TInf);
+    const scalar nu = $mu / rhoInf;
+
+    Info<< "R = " << R << endl;
+    Info<< "rhoInf = " << rhoInf << endl;
+    Info<< "nu = " << nu << endl;
+    Info<< "Re = " << ($magU * $diameter / nu) << endl;
+#};

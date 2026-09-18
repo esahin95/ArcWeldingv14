@@ -1,0 +1,51 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  13
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      phaseProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+phases (oil water air);
+
+missible (water oil);
+
+sigmas
+(
+    (air water)     0.07
+    (air oil)       0.07
+    (oil water)     0.00
+);
+
+/*
+sigmaDicts
+(
+    (air water)
+    {
+        sigma
+        {
+            type constant;
+            sigma 0.07;
+        }
+    }
+    (air oil)
+    {
+        sigma 0.07;
+    }
+);
+*/
+
+Ds
+(
+    (water oil)     1e-3
+);
+
+// ************************************************************************* //

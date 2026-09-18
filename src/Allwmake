@@ -8,12 +8,12 @@ wmake $targetType OpenFOAM/ErrorFunction
 
 wmake $targetType meshTools/zoneGenerators/volume/spheres
 
-#wmake $targetType twoPhaseModels/interfaceProperties
+wmake $targetType twoPhaseModels/interfaceProperties
 
-#wmake $targetType physicalProperties/solidificationModels
+wmake $targetType physicalProperties/solidificationModels
 
-#wmake $targetType physicalProperties/evaporationModels
+wmake $targetType physicalProperties/evaporationModels
 
-#fvModels/Allwmake $targetType $*
+fvModels/Allwmake $targetType $*
 
 wmake $targetType functionObjects/traceSurface

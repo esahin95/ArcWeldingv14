@@ -1,0 +1,37 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  13
+     \\/     M anipulation  |
+-------------------------------------------------------------------------------
+Description
+    Writes out the distribution along center line for one or more fields.
+
+\*---------------------------------------------------------------------------*/
+
+type            sets;
+
+libs            ("libsampling.so");
+
+writeControl    writeTime;
+
+interpolationScheme cellPoint;
+
+setFormat       raw;
+
+fields          (alpha.oil);
+
+sets
+(
+    center
+    {
+        type            lineUniform;
+        axis            distance;
+        start           (0    1e-4 5e-5);
+        end             (1e-3 1e-4 5e-5);
+        nPoints         300;
+    }
+);
+
+// ************************************************************************* //

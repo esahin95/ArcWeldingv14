@@ -1,0 +1,3 @@
+boussinesqForce.C
+
+LIB = $(FOAM_USER_LIBBIN)/libboussinesqForce

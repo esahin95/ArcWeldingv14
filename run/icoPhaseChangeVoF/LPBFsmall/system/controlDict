@@ -1,0 +1,162 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  13
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+application     foamRun;
+
+solver          icoPhaseChangeVoF;
+
+startFrom       startTime;
+
+startTime       0;
+
+stopAt          endTime;
+stopAt          nextWrite;
+
+endTime         100e-6;
+
+deltaT          1e-8;
+
+writeControl    timeStep;//adjustableRunTime;
+
+writeInterval   5;//1e-6;
+
+purgeWrite      0;
+
+writeFormat     binary;
+
+writePrecision  6;
+
+writeCompression off;
+
+timeFormat      general;
+
+timePrecision   6;
+
+runTimeModifiable yes;
+
+adjustTimeStep  yes;
+
+maxCo           0.2;
+maxAlphaCo      0.2;
+maxDiCo         500.0;
+
+maxDeltaT       1e-6;
+
+
+// ************************************************************************* //
+
+DebugSwitches
+{
+    //MULES           1;
+    laserDTRM       1;
+    //greyBodyRadiation 1;
+    //solidificationModel 1;
+    //evaporationModel 1;
+}
+
+
+OptimisationSwitches
+{
+    fileHandler collated;
+}
+
+writeOF writeTime;
+
+functions
+{
+    divU
+    {
+        type            div;
+        libs            ("libfieldFunctionObjects.so");
+        writeControl    writeTime;
+        writeFields     true;
+        regionType      all;
+        result          divU;
+        field           phi;
+    }
+
+    divRhoU
+    {
+        type            div;
+        libs            ("libfieldFunctionObjects.so");
+        writeControl    writeTime;
+        writeFields     false;
+        regionType      all;
+        result          divRhoU;
+        field           rhoPhi;
+    }
+
+    ddtRho
+    {
+        type            ddt;
+        libs            ("libfieldFunctionObjects.so");
+        writeControl    writeTime;
+        writeFields     false;
+        regionType      all;
+        result          ddtRho;
+        field           rho;
+    }
+
+    CErr
+    {
+        type            add;
+        libs            ("libfieldFunctionObjects.so");
+        fields          (ddtRho divRhoU);
+        result          CErr;
+        writeFields     true;
+        executeControl  writeTime;
+        writeControl    writeTime;
+    }
+
+    maxValue
+    {
+        type            volFieldValue;
+        libs            ("libfieldFunctionObjects.so");
+        log             true;
+        writeControl    $writeOF;
+        writeFields     false;
+        regionType      all;
+        cellZone        all;
+        operation       max;
+        fields (p_rgh T divU Q CErr);
+    }
+
+    minValue
+    {
+        type            volFieldValue;
+        libs            ("libfieldFunctionObjects.so");
+        log             true;
+        writeControl    $writeOF;
+        writeFields     false;
+        regionType      all;
+        cellZone        all;
+        operation       min;
+        fields (p_rgh T divU Q CErr);
+    }
+
+    maxMagValue
+    {
+        type            volFieldValue;
+        libs            ("libfieldFunctionObjects.so");
+        log             true;
+        writeControl    $writeOF;
+        writeFields     false;
+        regionType      all;
+        cellZone        all;
+        operation       maxMag;
+        fields (U);
+    }
+}

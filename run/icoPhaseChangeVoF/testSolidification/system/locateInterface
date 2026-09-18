@@ -1,0 +1,76 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  13
+     \\/     M anipulation  |
+-------------------------------------------------------------------------------
+Description
+    Writes a volVectorField of grad(p)
+
+\*---------------------------------------------------------------------------*/
+
+libs     ("libutilityFunctionObjects.so");
+type     coded;
+
+writeControl writeTime;
+
+codeInclude
+#{
+    #include "OFstream.H"
+    #include "OSspecific.H"
+    #include "writeFile.H"
+#};
+
+codeOptions
+#{
+#};
+
+codeLibs
+#{
+#};
+
+codeFields
+#{
+    fields.append("alpha.solid.bismuth");
+#};
+
+codeWrite
+#{
+    const volScalarField& alpha = mesh().lookupObject<volScalarField>(fields()[0]);
+    scalar x = 0;
+    scalar n = 1;
+    forAll(alpha, cellI)
+    {
+        if (alpha[cellI]> 0.05 && alpha[cellI]<0.95)
+        {
+            x += mesh().C()[cellI].x();
+            n += 1.0;
+        }
+    }
+    x /= n;
+
+    const fileName filePath
+    (
+        mesh().time().rootPath()
+       /mesh().time().globalCaseName()
+       /functionObjects::writeFile::outputPrefix
+    );
+
+    mkDir(filePath);
+
+    OFstream os
+    (
+        filePath + "/" + "data_" + Foam::name(Pstream::myProcNo()) + ".csv",
+        OFstream::ASCII,
+        OFstream::currentVersion,
+        OFstream::UNCOMPRESSED,
+        true
+    );
+
+    os << mesh().time().name() << " " << x << endl;
+
+    Info<<"Average interface location x = " << x <<endl;
+#};
+
+// ************************************************************************* //

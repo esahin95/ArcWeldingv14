@@ -1,0 +1,6 @@
+alphaSuSp.C
+thermophysicalPredictor.C
+
+icoThermoVoF.C
+
+LIB = $(FOAM_USER_LIBBIN)/libicoThermoVoF

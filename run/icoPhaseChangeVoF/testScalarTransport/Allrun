@@ -1,0 +1,30 @@
+#!/bin/sh
+cd ${0%/*} || exit 1    # Run from this directory
+
+# Source tutorial run functions
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+# pre-processing
+runApplication blockMesh
+runApplication checkMesh
+runApplication setFields
+
+if [ "$1" = "parallel" ]
+then
+    # run in parallel mode
+    runApplication decomposePar -cellProc
+    runParallel $(getApplication)
+    runApplication reconstructPar
+else
+    # run in serial mode
+    runApplication $(getApplication)
+fi
+
+foamPostProcess -noZero -func heatMass | tee log.heatMass
+
+sed -n "/Total alphaHeat/p" log.heatMass
+sed -n "/Total heat/p" log.heatMass
+
+paraview --state=boussinesq.pvsm
+
+#------------------------------------------------------------------------------

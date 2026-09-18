@@ -1,0 +1,122 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  13
+     \\/     M anipulation  |
+-------------------------------------------------------------------------------
+Description
+    Computes the exact evaporation heat flux
+
+\*---------------------------------------------------------------------------*/
+
+libs     ("libutilityFunctionObjects.so");
+type     coded;
+
+writeControl writeTime;
+
+// Access evaporation parameters
+L   ${${FOAM_CASE}/constant/physicalProperties.metal!evaporation/L};
+p0  ${${FOAM_CASE}/constant/physicalProperties.metal!evaporation/p0};
+Tv  ${${FOAM_CASE}/constant/physicalProperties.metal!evaporation/Tv};
+Mv  ${${FOAM_CASE}/constant/physicalProperties.metal!evaporation/Mv};
+Th  ${${FOAM_CASE}/constant/physicalProperties.metal!evaporation/Th};
+T0  ${${FOAM_CASE}/constant/physicalProperties.metal!evaporation/T0};
+M0  ${${FOAM_CASE}/constant/physicalProperties.metal!evaporation/M0};
+g0  ${${FOAM_CASE}/constant/physicalProperties.metal!evaporation/g0};
+gv  ${${FOAM_CASE}/constant/physicalProperties.metal!evaporation/gv};
+
+codeInclude
+#{
+    #include "volFields.H"
+    #include "fvcVolumeIntegrate.H"
+    #include "fvcGrad.H"
+    #include "mathematicalConstants.H"
+    #include "physicoChemicalConstants.H"
+#};
+
+codeOptions
+#{
+#};
+
+codeLibs
+#{
+#};
+
+codeFields
+#{
+    fields.append("alpha.metal");
+    fields.append("T");
+#};
+
+codeWrite
+#{
+    // Read fields
+    const volScalarField& alpha = mesh().lookupObject<volScalarField>(fields()[0]);
+    const volScalarField& T = mesh().lookupObject<volScalarField>(fields()[1]);
+
+    // Total area
+    const dimensionedScalar A = fvc::domainIntegrate(mag(fvc::grad(alpha)));
+    Info<<"Total Area = " << A.value() << " " << A.dimensions() << endl;
+
+    // Limits on temperature
+    List<scalar> Tlim(2, Zero);
+    Tlim[0] = gMin(T.primitiveField());
+    Tlim[1] = gMax(T.primitiveField());
+    Info<< Tlim << endl;
+
+    // Constants
+    const scalar pi = constant::mathematical::pi;
+    const scalar R = constant::physicoChemical::R.value();
+    const scalar R0 = R / $M0 * 1e3;
+    const scalar Rv = R / $Mv * 1e3;
+    const scalar a = sqrt($gv * Rv / $g0 / R0);
+    const scalar b = ($g0 + 1.0)/4.0;
+    scalar tmp;
+
+    // Compute evaporation parameters for knight model
+    forAll(Tlim, i)
+    {
+        const scalar Ti = Tlim[i];
+
+        const scalar M = min(1.0, max(0.0, (Ti-$Tv)/(4210.0-$Tv)));
+        const scalar m = sqrt(0.5*$gv)*M;
+
+        tmp = sqrt(pi)*0.5*m*($gv-1.0)/($gv+1.0);
+        const scalar TByTs = sqr(sqrt(1.0 + sqr(tmp)) - tmp);
+
+        tmp = exp(sqr(m))*erfc(m);
+        const scalar rSqrtTByTs = 1.0 / sqrt(TByTs);
+        const scalar rhoByRhos = rSqrtTByTs*((sqr(m) + 0.5)*tmp - m/sqrt(pi))
+                                + 0.5*sqr(rSqrtTByTs)*(1.0 - sqrt(pi)*m*tmp);
+
+        const scalar pByPs = rhoByRhos*TByTs;
+
+        tmp = a*sqrt(Ti/$T0)/rSqrtTByTs*M;
+        const scalar pByP1 = 1.0 + $g0*tmp*(b*tmp + sqrt(1.0 + sqr(b*tmp)));
+
+        const scalar phi  = 2*sqrt(pi)*m*pByPs*rSqrtTByTs;
+        const scalar mDot = sqrt(2.0/Rv/Ti)*m*pByP1*rSqrtTByTs*$p0;
+        const scalar pRec = ((1.0 + 2.0*sqr(m))*pByP1 - 1.0)*$p0;
+        const scalar Q = A.value() * mDot * $L;
+        Info<< "Knight: phi = " << phi << " , mDot = " << mDot
+            << " , pRec = " << pRec << " , Q = " << Q << endl;
+    }
+
+    // Compute evaporation parameters for saturated model
+    forAll(Tlim, i)
+    {
+        const scalar Ti = Tlim[i];
+
+        const scalar psByP1 = exp($L / Rv / $Tv * (1 - $Tv / Ti));
+
+        const scalar phi  = 0.816;
+        const scalar mDot = phi/sqrt(2.0*pi*Rv*Ti)*psByP1*$p0;
+        const scalar pRec = 0.54*psByP1*$p0;
+        const scalar Q = A.value() * mDot * $L;
+        Info<< "Saturated: phi = " << phi << " , mDot = " << mDot
+            << " , pRec = " << pRec << " , Q = " << Q << endl;
+    }
+#};
+
+// ************************************************************************* //

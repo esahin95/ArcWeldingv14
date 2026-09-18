@@ -1,0 +1,53 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  13
+     \\/     M anipulation  |
+-------------------------------------------------------------------------------
+Description
+    Writes a volVectorField of grad(p)
+
+\*---------------------------------------------------------------------------*/
+
+libs     ("libutilityFunctionObjects.so");
+type     coded;
+
+writeControl writeTime;
+
+codeInclude
+#{
+    #include "volFields.H"
+    #include "fvcVolumeIntegrate.H"
+#};
+
+codeOptions
+#{
+#};
+
+codeLibs
+#{
+#};
+
+codeFields
+#{
+    fields.append("alphaHeat.water");
+    fields.append("heat.water");
+#};
+
+codeWrite
+#{
+    const volScalarField& alphaHeat = mesh().lookupObject<volScalarField>(fields()[0]);
+    const volScalarField& heat = mesh().lookupObject<volScalarField>(fields()[1]);
+    Info<< alphaHeat.name() << " , " << heat.name()  << endl;
+
+    const dimensionedScalar a = fvc::domainIntegrate(alphaHeat);
+    const dimensionedScalar b = fvc::domainIntegrate(heat);
+
+    Info<<"Total alphaHeat = " << a.value() <<endl;
+    Info<<"Total heat = " << b.value() <<endl;
+    Info<<"Total difference = " << (b-a).value() << endl;
+
+#};
+
+// ************************************************************************* //

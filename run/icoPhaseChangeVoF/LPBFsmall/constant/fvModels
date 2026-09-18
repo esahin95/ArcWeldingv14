@@ -1,0 +1,70 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  13
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      fvModels;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+laser
+{
+    type            laserDTRM;
+    phase           gas;
+    absorption      1e+6;
+    powerModel
+    {
+        type        random;
+        radius      10e-6;
+        position table
+        (
+            (  0    ( 40e-6 50e-6 150e-6))
+            (100e-6 (110e-6 50e-6 150e-6))
+        );
+        normal      (0.0 0.0 -1.0);
+        Q           20.0;
+        powerDist   constant 1;
+        nRays       900;
+        relax       1.0;
+    };
+    reflectionModel
+    {
+        type fresnelLaser;
+        epsilon 0.18;
+    };
+    setFormat       vtk;
+}
+
+radiation
+{
+    type    greyBodyRadiation;
+    phase   gas;
+    eps     1;
+    T0      300;
+}
+
+boussinesqMetal
+{
+    type    BoussinesqForce;
+    phase   metal;
+    beta    5e-6;
+    T0      1658;
+}
+
+boussinesqGas
+{
+    type    BoussinesqForce;
+    phase   gas;
+    beta    4e-5;
+    T0      300;
+}
+
+
+//************************************************************************ //

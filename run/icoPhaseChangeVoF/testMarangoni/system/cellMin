@@ -1,0 +1,31 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  13
+     \\/     M anipulation  |
+-------------------------------------------------------------------------------
+Description
+    Writes out the minimum cell value for one or more fields.
+
+\*---------------------------------------------------------------------------*/
+
+type            volFieldValue;
+
+libs            ("libfieldFunctionObjects.so");
+
+log             true;
+
+writeControl    writeTime;
+
+writeFields     false;
+
+regionType      all;
+
+cellZone        all;
+
+operation       min;
+
+fields (p_rgh T divU);
+
+// ************************************************************************* //

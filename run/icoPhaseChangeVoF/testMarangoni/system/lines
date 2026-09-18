@@ -1,0 +1,46 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  13
+     \\/     M anipulation  |
+-------------------------------------------------------------------------------
+Description
+    Writes out the maximum cell value for one or more fields.
+
+\*---------------------------------------------------------------------------*/
+
+type            sets;
+
+libs            ("libsampling.so");
+
+writeControl    writeTime;
+
+interpolationScheme cellPoint;
+
+setFormat       raw;
+
+fields          (alpha.water);
+
+sets
+(
+    left
+    {
+        type            lineUniform;
+        axis            distance;
+        start           (1e-7 0.0  5e-5);
+        end             (1e-7 5e-4 5e-5);
+        nPoints         120;
+    }
+
+    right
+    {
+        type            lineUniform;
+        axis            distance;
+        start           (0.9999e-3 0.0  5e-5);
+        end             (0.9999e-3 5e-4 5e-5);
+        nPoints         120;
+    }
+);
+
+// ************************************************************************* //

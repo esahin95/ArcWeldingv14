@@ -1,0 +1,36 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  13
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      setFieldsDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+defaultValues
+{
+    alpha.metal 0;
+};
+
+zones
+{
+    metalPlate
+    {
+        type        box;
+        zoneType    cell;
+        box (-1 -1 -1) (1 1 100e-6);
+        values
+        {
+            alpha.metal   1;
+        }
+    }
+};
+
+// ************************************************************************* //

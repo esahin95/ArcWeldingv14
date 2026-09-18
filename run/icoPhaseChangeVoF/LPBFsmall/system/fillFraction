@@ -1,0 +1,31 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  13
+     \\/     M anipulation  |
+-------------------------------------------------------------------------------
+Description
+    Writes out the maximum cell value for one or more fields.
+
+\*---------------------------------------------------------------------------*/
+
+type            traceSurface;
+
+libs            ("libtraceSurface.so");
+
+log             true;
+
+alpha           alpha.metal;
+
+corners         ((0 0 100e-6) (150e-6 0e-6 100e-6) (150e-6 100e-6 100e-6));
+
+nx              6;
+ny              4;
+ns              16;
+
+height          80e-6;
+
+output          fillFraction;
+
+// ************************************************************************* //

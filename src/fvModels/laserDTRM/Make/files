@@ -1,0 +1,16 @@
+reflectionModels/reflectionModel/reflectionModel.C
+reflectionModels/reflectionModel/reflectionModelNew.C
+reflectionModels/constantReflectionModel/constantReflectionModel.C
+reflectionModels/fresnelLaserReflectionModel/fresnelLaserReflectionModel.C
+reflectionModels/fresnelLorentzDrudeReflectionModel/fresnelLorentzDrudeReflectionModel.C
+
+powerModels/powerModel/powerModel.C
+powerModels/powerModel/powerModelNew.C
+powerModels/randomPowerModel/randomPowerModel.C
+
+DTRMParticle/DTRMParticle.C
+DTRMParticle/DTRMParticleIO.C
+
+laserDTRM.C
+
+LIB = $(FOAM_USER_LIBBIN)/liblaserDTRM
