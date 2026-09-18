@@ -218,22 +218,24 @@ Foam::interfaceProperties::surfaceTensionForce() const
 {
     const fvMesh& mesh = alpha1_.mesh();
 
-    tmp<volVectorField> tnHat = n();
-    const volVectorField& nHat = tnHat();
+    const volScalarField sigma(sigmaPtr_->sigma());
 
-    tmp<volVectorField> tgradSigma = fvc::grad(sigmaPtr_->sigma());
-    const volVectorField& gradSigma = tgradSigma();
-    
-    return fvc::interpolate(sigmaK())*fvc::snGrad(alpha1_) + 
-    (
-        fvc::interpolate
-        (
-            mag(fvc::grad(alpha1_)) * 
+    const volVectorField gradAlpha(fvc::grad(alpha1_));
+    const volScalarField magGradAlpha(mag(gradAlpha));
+    const volVectorField nHat("n", gradAlpha/(magGradAlpha + deltaN_));
+
+    // Marangoni force: the surface tension gradient tangential to the interface
+    const volVectorField gradSigma(fvc::grad(sigma));
+
+    return
+        fvc::interpolate(sigma*K_)*fvc::snGrad(alpha1_)
+      + (
+            fvc::interpolate
             (
-                gradSigma - ((gradSigma & nHat) * nHat)
+                magGradAlpha*(gradSigma - (gradSigma & nHat)*nHat)
             )
-        ) & (mesh.Sf() / mesh.magSf())
-    );
+          & mesh.Sf()/mesh.magSf()
+        );
 }
 
 
