@@ -22,17 +22,18 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::noSolidificationModel
+    Foam::evaporationModels::none
 
 Description
+    No evaporation: the mass flux remains zero and no source terms are added.
 
 SourceFiles
-    noSolidificationModel.C
+    noEvaporationModel.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef noSolidificationModel_H
-#define noSolidificationModel_H
+#ifndef noEvaporationModel_H
+#define noEvaporationModel_H
 
 #include "evaporationModel.H"
 
@@ -40,28 +41,26 @@ SourceFiles
 
 namespace Foam
 {
-
 namespace evaporationModels
 {
 
-
 /*---------------------------------------------------------------------------*\
-                          Class noSolidificationModel Declaration
+                            Class none Declaration
 \*---------------------------------------------------------------------------*/
 
 class none
 :
     public evaporationModel
 {
-
 public:
 
     //- Runtime type information
     TypeName("none");
 
+
     // Constructors
 
-        //- Construct from components
+        //- Construct for the phase given by group
         none(const fvMesh& mesh, const word& group);
 
         //- Disallow default bitwise copy construction
@@ -72,23 +71,24 @@ public:
     virtual ~none()
     {}
 
-    // Member functions
 
-        //- Correct solid fraction
+    // Member Functions
+
+        //- Correct the mass flux; does nothing
         virtual scalar correct(const bool relax=true);
 
-        //- Source term for energy equation
+        //- Add the evaporative cooling; does nothing
         virtual void addSup(fvMatrix<scalar>& eqn) const;
 
-        //- Source term for momentum equation
+        //- Add the recoil pressure; does nothing
         virtual void addSup(fvMatrix<vector>& eqn) const;
+
 
     // Member Operators
 
         //- Disallow default bitwise assignment
         void operator=(const none&) = delete;
 };
-
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

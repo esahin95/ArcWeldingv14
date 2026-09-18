@@ -25,11 +25,31 @@ Class
     Foam::evaporationModel
 
 Description
+    Base class for evaporation models of a VoF phase.
+
+    The model is selected from the optional \c evaporation sub-dictionary of
+    the phase physicalProperties; without it no evaporation is modelled
+    (\c none). A model maintains the evaporation mass flux per unit
+    interface area, \c mDot.<phase>, and provides the corresponding source
+    terms for the energy and momentum equations.
+
+Usage
+    In constant/physicalProperties.<phase>:
+    \verbatim
+    evaporation
+    {
+        type    gasDynamic;
+        L       6.3e6;
+        p0      1e5;
+        Mv      56;
+        Tv      3100;
+        relax   0.9;
+    }
+    \endverbatim
 
 SourceFiles
-    evaporationModelI.H
     evaporationModel.C
-    evaporationModelIO.C
+    evaporationModelNew.C
 
 \*---------------------------------------------------------------------------*/
 
@@ -37,10 +57,8 @@ SourceFiles
 #define evaporationModel_H
 
 #include "physicalProperties.H"
-#include "dimensionedTypes.H"
 #include "volFields.H"
 #include "fvMatrix.H"
-#include "fluidThermo.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -48,7 +66,7 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                          Class evaporationModel Declaration
+                      Class evaporationModel Declaration
 \*---------------------------------------------------------------------------*/
 
 class evaporationModel
@@ -57,35 +75,19 @@ class evaporationModel
 {
 protected:
 
-    //- Evaporation dictionary name
-    static const word dictName_;
+    // Protected Data
 
-    // References to database
+        //- Name of the model sub-dictionary
+        static const word dictName_;
 
-        //- Reference to the mesh
-        const fvMesh& mesh_;
-
-        //- Reference to the phase thermo
-        const fluidThermo& thermo_;
-
-
-    // References to fields
-
-        //- Fluid fraction
+        //- Phase fraction
         const volScalarField& alpha_;
-
-        //- Density
-        const volScalarField& rho_;
 
         //- Temperature
         const volScalarField& T_;
 
-        //- Mass flux
-        const surfaceScalarField& alphaRhoPhi_;
-
-
-    //- Mass transfer rate
-    volScalarField::Internal mDot_;
+        //- Evaporation mass flux per unit interface area
+        volScalarField::Internal mDot_;
 
 
 public:
@@ -111,7 +113,7 @@ public:
 
     // Constructors
 
-        //- Construct from components
+        //- Construct for the phase given by group
         evaporationModel(const fvMesh& mesh, const word& group);
 
         //- Disallow default bitwise copy construction
@@ -120,7 +122,7 @@ public:
 
     // Selectors
 
-        //- Return a reference to the selected viscosity model
+        //- Select the evaporation model of the phase given by group
         static autoPtr<evaporationModel> New
         (
             const fvMesh& mesh,
@@ -132,23 +134,24 @@ public:
     virtual ~evaporationModel()
     {}
 
+
     // Member Functions
 
-        //- Correct solid fraction
+        //- Correct the mass flux and return its maximum change
         virtual scalar correct(const bool relax=true) = 0;
 
-        //- Source term for energy equation
+        //- Add the evaporative cooling to the energy equation
         virtual void addSup(fvMatrix<scalar>& eqn) const = 0;
 
-        //- Source term for momentum equation
+        //- Add the recoil pressure to the momentum equation
         virtual void addSup(fvMatrix<vector>& eqn) const = 0;
+
 
     // Member Operators
 
         //- Disallow default bitwise assignment
         void operator=(const evaporationModel&) = delete;
 };
-
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

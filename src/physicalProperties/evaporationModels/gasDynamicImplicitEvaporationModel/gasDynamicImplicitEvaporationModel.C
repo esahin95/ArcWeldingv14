@@ -25,12 +25,9 @@ License
 
 #include "gasDynamicImplicitEvaporationModel.H"
 #include "addToRunTimeSelectionTable.H"
-
 #include "fvcGrad.H"
-#include "fvmSup.H"
-#include "mathematicalConstants.H"
-#include "physicoChemicalConstants.H"
 #include "fvcVolumeIntegrate.H"
+#include "fvmSup.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -39,7 +36,6 @@ namespace Foam
 namespace evaporationModels
 {
     defineTypeNameAndDebug(gasDynamicImplicit, 0);
-
     addToRunTimeSelectionTable
     (
         evaporationModel,
@@ -64,22 +60,25 @@ Foam::evaporationModels::gasDynamicImplicit::gasDynamicImplicit
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-
-void Foam::evaporationModels::gasDynamicImplicit::addSup(fvMatrix<scalar>& eqn) const
+void Foam::evaporationModels::gasDynamicImplicit::addSup
+(
+    fvMatrix<scalar>& eqn
+) const
 {
     const volScalarField::Internal& T = T_.v();
+    const volScalarField::Internal magGradAlpha(mag(fvc::grad(alpha_)()()));
+    const volScalarField::Internal LByRT(Lv_/Rv_/T);
 
-    const volScalarField::Internal magGradAlpha = mag(fvc::grad(alpha_)()());
     const fvMatrix<scalar> evapEqn
     (
-        fvm::Sp(Lv_*mDot_/T*(Lv_/Rv_/T - 0.5)*magGradAlpha, eqn.psi())
-        - Lv_*mDot_*(Lv_/Rv_/T - 1.5)*magGradAlpha
+        fvm::Sp(Lv_*mDot_/T*(LByRT - 0.5)*magGradAlpha, eqn.psi())
+      - Lv_*mDot_*(LByRT - 1.5)*magGradAlpha
     );
 
     if (evaporationModel::debug)
     {
-        const dimensionedScalar hv = fvc::domainIntegrate(evapEqn&T_);
-        Info<< "Total evaporative enthalphy: " << hv << endl;
+        Info<< "Total evaporative enthalphy: "
+            << fvc::domainIntegrate(evapEqn & T_) << endl;
     }
 
     eqn += evapEqn;

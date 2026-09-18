@@ -25,12 +25,10 @@ License
 
 #include "gasDynamicEvaporationModel.H"
 #include "addToRunTimeSelectionTable.H"
-
 #include "fvcGrad.H"
-#include "fvmSup.H"
+#include "fvcVolumeIntegrate.H"
 #include "mathematicalConstants.H"
 #include "physicoChemicalConstants.H"
-#include "fvcVolumeIntegrate.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -39,17 +37,9 @@ namespace Foam
 namespace evaporationModels
 {
     defineTypeNameAndDebug(gasDynamic, 0);
-
-    addToRunTimeSelectionTable
-    (
-        evaporationModel,
-        gasDynamic,
-        dictionary
-    );
+    addToRunTimeSelectionTable(evaporationModel, gasDynamic, dictionary);
 }
 }
-
-using namespace Foam::constant;
 
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
@@ -61,44 +51,22 @@ Foam::evaporationModels::gasDynamic::gasDynamic
 )
 :
     evaporationModel(mesh, group),
-
     dict_(subDict(dictName_)),
-
-    Lv_
-    (
-        "Lv",
-        dimEnergy/dimMass,
-        dict_.lookup<scalar>("L")
-    ),
-
-    p0_
-    (
-        "p0",
-        dimPressure,
-        dict_.lookup<scalar>("p0")
-    ),
-
+    Lv_("Lv", dimEnergy/dimMass, dict_.lookup<scalar>("L")),
+    p0_("p0", dimPressure, dict_.lookup<scalar>("p0")),
     Rv_
     (
         "Rv",
-        physicoChemical::R/
-        dimensionedScalar
+        constant::physicoChemical::R
+       /dimensionedScalar
         (
             "M",
             dimMass/dimMoles,
             dict_.lookup<scalar>("Mv")*1e-3
         )
     ),
-
-    Tv_
-    (
-        "T",
-        dimTemperature,
-        dict_.lookup<scalar>("Tv")
-    ),
-
+    Tv_("Tv", dimTemperature, dict_.lookup<scalar>("Tv")),
     relax_(dict_.lookup<scalar>("relax")),
-
     pRec_
     (
         IOobject
@@ -108,7 +76,7 @@ Foam::evaporationModels::gasDynamic::gasDynamic
             mesh
         ),
         mesh,
-        dimensionedScalar(dimPressure, 0.0)
+        dimensionedScalar(dimPressure, 0)
     )
 {
     if (evaporationModel::debug)
@@ -116,7 +84,6 @@ Foam::evaporationModels::gasDynamic::gasDynamic
         Info<< "Rv = " << Rv_ << endl;
     }
 
-    // Update mass transfer rate and recoil pressure
     correct(false);
 }
 
@@ -125,50 +92,46 @@ Foam::evaporationModels::gasDynamic::gasDynamic
 
 Foam::scalar Foam::evaporationModels::gasDynamic::correct(const bool relax)
 {
-    // cache old mass transfer rate
     const volScalarField::Internal mDot0(mDot_);
 
-    // Saturated vapor pressure
+    // Saturation pressure
     const dimensionedScalar LByRTv = Lv_/(Rv_*Tv_);
-    const volScalarField::Internal pSat = p0_*exp(LByRTv*(1. - Tv_/T_.v()));
+    const volScalarField::Internal pSat
+    (
+        p0_*exp(LByRTv*(1.0 - Tv_/T_.v()))
+    );
 
-    // Mass transfer rate
-    mDot_ = 0.816*pSat/sqrt(mathematical::twoPi*Rv_*T_.v());
+    mDot_ = 0.816*pSat/sqrt(constant::mathematical::twoPi*Rv_*T_.v());
+
     if (relax)
     {
-        mDot_ = relax_*mDot_ + (1-relax_)*mDot0;
+        mDot_ = relax_*mDot_ + (1 - relax_)*mDot0;
     }
 
-    // Recoil pressure
     pRec_ = 0.54*pSat;
 
-    // Return maximum change
-    return gMax(mag(mDot_ - mDot0)().primitiveField());
+    return gMax(mag(mDot_.primitiveField() - mDot0.primitiveField()));
 }
 
 
 void Foam::evaporationModels::gasDynamic::addSup(fvMatrix<scalar>& eqn) const
 {
-    const volScalarField::Internal magGradAlpha = mag(fvc::grad(alpha_)()());
+    const volScalarField::Internal magGradAlpha(mag(fvc::grad(alpha_)()()));
 
     if (evaporationModel::debug)
     {
-        const dimensionedScalar hv = fvc::domainIntegrate
-            (
-                Lv_*mDot_*magGradAlpha
-            );
-        Info<< "Total evaporative enthalphy: " << hv << endl;
+        Info<< "Total evaporative enthalphy: "
+            << fvc::domainIntegrate(Lv_*mDot_*magGradAlpha) << endl;
     }
 
-    // Add latent heat of evaporation
     eqn += Lv_*mDot_*magGradAlpha;
 }
 
 
 void Foam::evaporationModels::gasDynamic::addSup(fvMatrix<vector>& eqn) const
 {
-    // Add recoil pressure term
     eqn -= pRec_*fvc::grad(alpha_)()();
 }
+
 
 // ************************************************************************* //

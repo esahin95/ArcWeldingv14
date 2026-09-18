@@ -22,12 +22,21 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::gasDynamicImplicitEvaporationModel
+    Foam::evaporationModels::gasDynamicImplicit
 
 Description
+    Evaporation in the gas-dynamic limit as gasDynamic, with the evaporative
+    cooling linearised in the temperature.
+
+    Using d(mDot)/dT = mDot/T*(L/(Rv*T) - 1/2), the cooling L*mDot*|grad(alpha)|
+    is split into a part implicit in T and an explicit remainder. The recoil
+    pressure and the parameters are those of gasDynamic.
 
 SourceFiles
     gasDynamicImplicitEvaporationModel.C
+
+See also
+    Foam::evaporationModels::gasDynamic
 
 \*---------------------------------------------------------------------------*/
 
@@ -40,28 +49,26 @@ SourceFiles
 
 namespace Foam
 {
-
 namespace evaporationModels
 {
 
-
 /*---------------------------------------------------------------------------*\
-                          Class gasDynamicImplicitEvaporationModel Declaration
+                     Class gasDynamicImplicit Declaration
 \*---------------------------------------------------------------------------*/
 
 class gasDynamicImplicit
 :
     public gasDynamic
 {
-
 public:
 
     //- Runtime type information
     TypeName("gasDynamicImplicit");
 
+
     // Constructors
 
-        //- Construct from components
+        //- Construct for the phase given by group
         gasDynamicImplicit(const fvMesh& mesh, const word& group);
 
         //- Disallow default bitwise copy construction
@@ -73,9 +80,12 @@ public:
     {}
 
 
-    // Member functions
+    // Member Functions
 
-        //- Source term for energy equation
+        //- Recoil pressure as gasDynamic
+        using gasDynamic::addSup;
+
+        //- Add the linearised evaporative cooling to the energy equation
         virtual void addSup(fvMatrix<scalar>& eqn) const;
 
 
@@ -84,7 +94,6 @@ public:
         //- Disallow default bitwise assignment
         void operator=(const gasDynamicImplicit&) = delete;
 };
-
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

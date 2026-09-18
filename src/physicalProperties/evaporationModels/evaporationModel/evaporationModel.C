@@ -25,17 +25,15 @@ License
 
 #include "evaporationModel.H"
 
-
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
-
-const Foam::word
-Foam::evaporationModel::dictName_ = "evaporation";
 
 namespace Foam
 {
     defineTypeNameAndDebug(evaporationModel, 0);
     defineRunTimeSelectionTable(evaporationModel, dictionary);
 }
+
+const Foam::word Foam::evaporationModel::dictName_ = "evaporation";
 
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
@@ -47,37 +45,11 @@ Foam::evaporationModel::evaporationModel
 )
 :
     physicalProperties(mesh, group),
-
-    mesh_(mesh),
-
-    thermo_
-    (
-        mesh.lookupObject<fluidThermo>
-        (
-            IOobject::groupName(physicalProperties::typeName, group)
-        )
-    ),
-
     alpha_
     (
-        mesh.lookupObject<volScalarField>
-        (
-            IOobject::groupName("alpha", group)
-        )
+        mesh.lookupObject<volScalarField>(IOobject::groupName("alpha", group))
     ),
-
-    rho_(mesh.lookupObject<volScalarField>("rho")),
-
     T_(mesh.lookupObject<volScalarField>("T")),
-
-    alphaRhoPhi_
-    (
-        mesh.lookupObject<surfaceScalarField>
-        (
-            IOobject::groupName("alphaRhoPhi", group)
-        )
-    ),
-
     mDot_
     (
         IOobject
@@ -87,7 +59,7 @@ Foam::evaporationModel::evaporationModel
             mesh
         ),
         mesh,
-        dimensionedScalar(dimMass/dimTime/dimArea, 0.0)
+        dimensionedScalar(dimMass/dimTime/dimArea, 0)
     )
 {}
 

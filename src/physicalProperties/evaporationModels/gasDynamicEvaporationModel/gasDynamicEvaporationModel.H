@@ -22,9 +22,32 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::gasDynamicEvaporationModel
+    Foam::evaporationModels::gasDynamic
 
 Description
+    Evaporation in the gas-dynamic (sonic) limit.
+
+    The saturation pressure follows the Clausius-Clapeyron relation
+
+        pSat = p0*exp(L/(Rv*Tv)*(1 - Tv/T))
+
+    and the evaporation mass flux and recoil pressure are
+
+        mDot = 0.816*pSat/sqrt(2*pi*Rv*T),  pRec = 0.54*pSat
+
+    The evaporative cooling L*mDot*|grad(alpha)| is added explicitly to the
+    energy equation and the recoil pressure pRec*grad(alpha) to the momentum
+    equation.
+
+Usage
+    \table
+        Property | Description                          | Required | Default
+        L        | Latent heat of evaporation           | yes      |
+        p0       | Ambient pressure                     | yes      |
+        Mv       | Molar mass of the vapour [g/mol]     | yes      |
+        Tv       | Boiling temperature at p0            | yes      |
+        relax    | Mass flux relaxation factor          | yes      |
+    \endtable
 
 SourceFiles
     gasDynamicEvaporationModel.C
@@ -40,13 +63,11 @@ SourceFiles
 
 namespace Foam
 {
-
 namespace evaporationModels
 {
 
-
 /*---------------------------------------------------------------------------*\
-                          Class gasDynamicEvaporationModel Declaration
+                         Class gasDynamic Declaration
 \*---------------------------------------------------------------------------*/
 
 class gasDynamic
@@ -55,33 +76,28 @@ class gasDynamic
 {
 protected:
 
-    // Evaporation properties
+    // Protected Data
 
-        //- Evaporation properties dictionary
+        //- Model coefficients dictionary
         const dictionary& dict_;
 
         //- Latent heat of evaporation
         const dimensionedScalar Lv_;
 
-        //- Atmospheric pressure
+        //- Ambient pressure
         const dimensionedScalar p0_;
 
-        //- Vapor properties
+        //- Specific gas constant of the vapour
         const dimensionedScalar Rv_;
+
+        //- Boiling temperature at the ambient pressure
         const dimensionedScalar Tv_;
 
-    // Numeric parameters
-
-        // Relaxation
+        //- Mass flux relaxation factor
         const scalar relax_;
-
-    // New internal fields
 
         //- Recoil pressure
         volScalarField::Internal pRec_;
-
-        //- Phase extensive evaporation rate
-        //volScalarField mDotv_;
 
 
 public:
@@ -89,9 +105,10 @@ public:
     //- Runtime type information
     TypeName("gasDynamic");
 
+
     // Constructors
 
-        //- Construct from components
+        //- Construct for the phase given by group
         gasDynamic(const fvMesh& mesh, const word& group);
 
         //- Disallow default bitwise copy construction
@@ -103,15 +120,15 @@ public:
     {}
 
 
-    // Member functions
+    // Member Functions
 
-        //- Correct solid fraction
+        //- Correct the mass flux and return its maximum change
         virtual scalar correct(const bool relax=true);
 
-        //- Source term for energy equation
+        //- Add the evaporative cooling to the energy equation
         virtual void addSup(fvMatrix<scalar>& eqn) const;
 
-        //- Source term for momentum equation
+        //- Add the recoil pressure to the momentum equation
         virtual void addSup(fvMatrix<vector>& eqn) const;
 
 
@@ -120,7 +137,6 @@ public:
         //- Disallow default bitwise assignment
         void operator=(const gasDynamic&) = delete;
 };
-
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

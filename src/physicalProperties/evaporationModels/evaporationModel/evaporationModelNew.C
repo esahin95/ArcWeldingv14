@@ -25,9 +25,8 @@ License
 
 #include "evaporationModel.H"
 #include "noEvaporationModel.H"
-#include "fvMesh.H"
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * * //
 
 Foam::autoPtr<Foam::evaporationModel> Foam::evaporationModel::New
 (
@@ -35,42 +34,36 @@ Foam::autoPtr<Foam::evaporationModel> Foam::evaporationModel::New
     const word& group
 )
 {
-    const IOdictionary dict
-    (
-        evaporationModel::findModelDict(mesh, group)
-    );
+    const IOdictionary dict(findModelDict(mesh, group));
 
-    if (dict.isDict(dictName_))
+    if (!dict.isDict(dictName_))
     {
-        const dictionary& modelDict = dict.subDict(dictName_);
+        Info<< "There is no " << dictName_ << " dictionary" << nl
+            << "Selecting default evaporation model none" << endl;
 
-        const word modelType(modelDict.lookup("type"));
-
-        Info<< "Selecting evaporation model " << modelType << endl;
-
-        dictionaryConstructorTable::iterator cstrIter =
-            dictionaryConstructorTablePtr_->find(modelType);
-
-        if (cstrIter == dictionaryConstructorTablePtr_->end())
-        {
-            FatalIOErrorInFunction(dict)
-                << "Unknown evaporation model " << modelType << nl << nl
-                << "Valid evaporation models are : " << endl
-                << dictionaryConstructorTablePtr_->sortedToc()
-                << exit(FatalIOError);
-        }
-
-        return autoPtr<evaporationModel>(cstrIter()(mesh, group));
-    }
-    else
-    {
-        Info<<"There is no " << dictName_ << " dictionary"<<endl;
-        Info<<"Selecting default evaporation model none"<<endl;
         return autoPtr<evaporationModel>
         (
             new evaporationModels::none(mesh, group)
         );
     }
+
+    const word modelType(dict.subDict(dictName_).lookup("type"));
+
+    Info<< "Selecting evaporation model " << modelType << endl;
+
+    dictionaryConstructorTable::iterator cstrIter =
+        dictionaryConstructorTablePtr_->find(modelType);
+
+    if (cstrIter == dictionaryConstructorTablePtr_->end())
+    {
+        FatalIOErrorInFunction(dict)
+            << "Unknown evaporation model " << modelType << nl << nl
+            << "Valid evaporation models are : " << endl
+            << dictionaryConstructorTablePtr_->sortedToc()
+            << exit(FatalIOError);
+    }
+
+    return autoPtr<evaporationModel>(cstrIter()(mesh, group));
 }
 
 

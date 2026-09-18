@@ -33,13 +33,7 @@ namespace Foam
 namespace evaporationModels
 {
     defineTypeNameAndDebug(none, 0);
-
-    addToRunTimeSelectionTable
-    (
-        evaporationModel,
-        none,
-        dictionary
-    );
+    addToRunTimeSelectionTable(evaporationModel, none, dictionary);
 }
 }
 
@@ -60,7 +54,7 @@ Foam::evaporationModels::none::none
 
 Foam::scalar Foam::evaporationModels::none::correct(const bool relax)
 {
-    return 0.0;
+    return 0;
 }
 
 
@@ -70,5 +64,6 @@ void Foam::evaporationModels::none::addSup(fvMatrix<scalar>& eqn) const
 
 void Foam::evaporationModels::none::addSup(fvMatrix<vector>& eqn) const
 {}
+
 
 // ************************************************************************* //

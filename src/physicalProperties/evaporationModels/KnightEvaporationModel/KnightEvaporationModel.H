@@ -22,12 +22,32 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::KnightEvaporationModel
+    Foam::evaporationModels::Knight
 
 Description
+    Evaporation with the mass flux and recoil pressure from Knight's jump
+    conditions across the Knudsen layer.
+
+    The Mach number of the vapour increases linearly from 0 at the boiling
+    temperature Tv to its maximum sqrt(gv/2) at Th. The source terms and the
+    remaining parameters are those of gasDynamic.
+
+Usage
+    In addition to the gasDynamic parameters:
+    \table
+        Property | Description                            | Required | Default
+        T0       | Ambient temperature                    | yes      |
+        g0       | Heat capacity ratio of the ambient gas | yes      |
+        M0       | Molar mass of the ambient gas [g/mol]  | yes      |
+        Th       | Temperature of the maximum Mach number | yes      |
+        gv       | Heat capacity ratio of the vapour      | yes      |
+    \endtable
 
 SourceFiles
     KnightEvaporationModel.C
+
+See also
+    Foam::evaporationModels::gasDynamic
 
 \*---------------------------------------------------------------------------*/
 
@@ -40,32 +60,34 @@ SourceFiles
 
 namespace Foam
 {
-
 namespace evaporationModels
 {
 
-
 /*---------------------------------------------------------------------------*\
-                          Class KnightEvaporationModel Declaration
+                           Class Knight Declaration
 \*---------------------------------------------------------------------------*/
 
 class Knight
 :
     public gasDynamic
 {
-
-
 protected:
 
-    // Evaporation properties
+    // Protected Data
 
-        //- Atmospheric properties
+        //- Ambient temperature
         const dimensionedScalar T0_;
+
+        //- Heat capacity ratio of the ambient gas
         const dimensionedScalar g0_;
+
+        //- Specific gas constant of the ambient gas
         const dimensionedScalar R0_;
 
-        //- Vapor properties
+        //- Temperature at which the Mach number reaches its maximum
         const dimensionedScalar Th_;
+
+        //- Heat capacity ratio of the vapour
         const dimensionedScalar gv_;
 
 
@@ -74,9 +96,10 @@ public:
     //- Runtime type information
     TypeName("Knight");
 
+
     // Constructors
 
-        //- Construct from components
+        //- Construct for the phase given by group
         Knight(const fvMesh& mesh, const word& group);
 
         //- Disallow default bitwise copy construction
@@ -88,9 +111,9 @@ public:
     {}
 
 
-    // Member functions
+    // Member Functions
 
-        //- Correct solid fraction
+        //- Correct the mass flux and return its maximum change
         virtual scalar correct(const bool relax=true);
 
 
@@ -99,7 +122,6 @@ public:
         //- Disallow default bitwise assignment
         void operator=(const Knight&) = delete;
 };
-
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

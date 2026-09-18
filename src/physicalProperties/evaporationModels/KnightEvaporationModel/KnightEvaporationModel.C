@@ -25,10 +25,8 @@ License
 
 #include "KnightEvaporationModel.H"
 #include "addToRunTimeSelectionTable.H"
-#include "fvcGrad.H"
-
+#include "mathematicalConstants.H"
 #include "physicoChemicalConstants.H"
-
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -37,17 +35,9 @@ namespace Foam
 namespace evaporationModels
 {
     defineTypeNameAndDebug(Knight, 0);
-
-    addToRunTimeSelectionTable
-    (
-        evaporationModel,
-        Knight,
-        dictionary
-    );
+    addToRunTimeSelectionTable(evaporationModel, Knight, dictionary);
 }
 }
-
-using namespace Foam::constant;
 
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
@@ -59,53 +49,27 @@ Foam::evaporationModels::Knight::Knight
 )
 :
     gasDynamic(mesh, group),
-
-    T0_
-    (
-        "T0",
-        dimTemperature,
-        dict_.lookup<scalar>("T0")
-    ),
-
-    g0_
-    (
-        "g0",
-        dimless,
-        dict_.lookup<scalar>("g0")
-    ),
-
+    T0_("T0", dimTemperature, dict_.lookup<scalar>("T0")),
+    g0_("g0", dimless, dict_.lookup<scalar>("g0")),
     R0_
     (
         "R0",
-        physicoChemical::R/
-        dimensionedScalar
+        constant::physicoChemical::R
+       /dimensionedScalar
         (
             "M",
             dimMass/dimMoles,
             dict_.lookup<scalar>("M0")*1e-3
         )
     ),
-
-    Th_
-    (
-        "Th",
-        dimTemperature,
-        dict_.lookup<scalar>("Th")
-    ),
-
-    gv_
-    (
-        "gv",
-        dimless,
-        dict_.lookup<scalar>("gv")
-    )
+    Th_("Th", dimTemperature, dict_.lookup<scalar>("Th")),
+    gv_("gv", dimless, dict_.lookup<scalar>("gv"))
 {
     if (evaporationModel::debug)
     {
         Info<< "R0 = " << R0_ << endl;
     }
 
-    // Update mass transfer rate and recoil pressure
     correct(false);
 }
 
@@ -114,30 +78,39 @@ Foam::evaporationModels::Knight::Knight
 
 Foam::scalar Foam::evaporationModels::Knight::correct(const bool relax)
 {
-    // cache old mass transfer rate
+    using constant::mathematical::pi;
+
+    const volScalarField::Internal& T = T_.v();
     const volScalarField::Internal mDot0(mDot_);
 
-    // Temporary field data
-    tmp<volScalarField::Internal> tcData
-    (
-        volScalarField::Internal::New("cData", mesh_, dimless)
-    );
-    volScalarField::Internal& cData = tcData.ref();
-
-    // Modified Mach number
+    // Mach number of the vapour
     const volScalarField::Internal m
-        = max(min((T_.v() - Tv_)/(Th_ - Tv_), 1.0), 0.0)*sqrt(0.5*gv_);
+    (
+        max(min((T - Tv_)/(Th_ - Tv_), 1.0), 0.0)*sqrt(0.5*gv_)
+    );
 
-    cData = 0.5*m*(gv_ - 1.0)/(gv_ + 1.0);
-    const volScalarField::Internal sqrtTByTs =
-        sqrt(1.0 + mathematical::pi*sqr(cData)) - sqrt(mathematical::pi)*cData;
+    // Jump conditions across the Knudsen layer
+    const volScalarField::Internal c1(0.5*m*(gv_ - 1.0)/(gv_ + 1.0));
 
-    cData = sqrt(2.0*Rv_/R0_/g0_)*sqrt(T_.v()/T0_)*sqrtTByTs*m;
+    const volScalarField::Internal sqrtTByTs
+    (
+        sqrt(1.0 + pi*sqr(c1)) - sqrt(pi)*c1
+    );
+
+    const volScalarField::Internal c2
+    (
+        sqrt(2.0*Rv_/R0_/g0_)*sqrt(T/T0_)*sqrtTByTs*m
+    );
+
     const dimensionedScalar b = (g0_ + 1.0)/4.0;
-    const volScalarField::Internal pByP1 =
-        1.0 + g0_*cData*(b*cData + sqrt(1.0 + sqr(b*cData)));
 
-    mDot_ = sqrt(2.0/Rv_/T_.v())*m*pByP1/sqrtTByTs*p0_;
+    const volScalarField::Internal pByP1
+    (
+        1.0 + g0_*c2*(b*c2 + sqrt(1.0 + sqr(b*c2)))
+    );
+
+    mDot_ = sqrt(2.0/Rv_/T)*m*pByP1/sqrtTByTs*p0_;
+
     if (relax)
     {
         mDot_ = relax_*mDot_ + (1 - relax_)*mDot0;
@@ -145,8 +118,7 @@ Foam::scalar Foam::evaporationModels::Knight::correct(const bool relax)
 
     pRec_ = ((1.0 + 2.0*sqr(m))*pByP1 - 1.0)*p0_;
 
-    // Return maximum change
-    return gMax(mag(mDot_ - mDot0)().primitiveField());
+    return gMax(mag(mDot_.primitiveField() - mDot0.primitiveField()));
 }
 
 
