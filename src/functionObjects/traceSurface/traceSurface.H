@@ -25,24 +25,50 @@ Class
     Foam::functionObjects::traceSurface
 
 Description
-    Must be updated. --- IGNORE ---
-    This function object reports the height of the interface above a set of
-    locations. For each location, it writes the vertical distance of the
-    interface above both the location and the lowest boundary. It also writes
-    the point on the interface from which these heights are computed. It uses
-    an integral approach, so if there are multiple interfaces above or below a
-    location then this method will generate average values.
+    Traces rays through a VoF phase normal to a rectangle and writes the
+    layer height or fill fraction of the phase over a grid of tiles.
 
-    Example of function object specification:
+    The rectangle is given by three corners: the first two span its
+    x-direction, the second and third its y-direction. It is divided into
+    nx by ny tiles, each sampled by ns by ns rays starting on the rectangle
+    and travelling along its normal x ^ y, up to the given height or the
+    first wall or other non-coupled boundary. For each tile the output
+    quantity is either:
+
+      - layerHeight: the largest distance along a ray to the exit of the last
+        cell with alpha >= 0.5
+      - fillFraction: the mean integral of alpha along the rays, divided by
+        the layer height
+
+    At every write, one line per tile is written to the output file with the
+    tile centre, in coordinates of the rectangle, and the output quantity.
+
+Usage
     \verbatim
-    traceSurface1
+    layerHeight
     {
-        type           traceSurface;
-        libs           ("libfieldFunctionObjects.so");
-        alpha          alpha.water;
-        locations      ((0 0 0) (10 0 0) (20 0 0));
+        type        traceSurface;
+        libs        ("libtraceSurface.so");
+        alpha       alpha.metal;
+        corners     ((0 0 1e-4) (1.5e-4 0 1e-4) (1.5e-4 1e-4 1e-4));
+        nx          30;
+        ny          20;
+        ns          8;
+        height      8e-5;
+        output      layerHeight;
     }
     \endverbatim
+
+    \table
+        Property | Description                            | Required | Default
+        alpha    | Name of the phase fraction field       | yes      |
+        corners  | Three corners of the rectangle         | yes      |
+        nx       | Number of tiles in the x-direction     | yes      |
+        ny       | Number of tiles in the y-direction     | yes      |
+        ns       | Number of rays per tile per direction  | yes      |
+        height   | Maximum ray length                     | no       | great
+        output   | Output: layerHeight or fillFraction    | yes      |
+    \endtable
 
 SourceFiles
     traceSurface.C

@@ -8,7 +8,6 @@ foamCleanTutorials cases
 
 # pre-processing
 runApplication blockMesh
-runApplication setFields
 
 runApplication decomposePar
 foamPostProcess -func "layerHeight" -latestTime > log.layerHeight

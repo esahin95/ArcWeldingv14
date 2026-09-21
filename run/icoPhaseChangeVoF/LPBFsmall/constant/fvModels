@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Version:  13
+    \\  /    A nd           | Version:  14
      \\/     M anipulation  |
 \*---------------------------------------------------------------------------*/
 FoamFile
@@ -19,6 +19,7 @@ laser
     type            laserDTRM;
     phase           gas;
     absorption      1e+6;
+    relax           1.0;
     powerModel
     {
         type        random;
@@ -32,13 +33,12 @@ laser
         Q           20.0;
         powerDist   constant 1;
         nRays       900;
-        relax       1.0;
-    };
+    }
     reflectionModel
     {
         type fresnelLaser;
         epsilon 0.18;
-    };
+    }
     setFormat       vtk;
 }
 
@@ -52,7 +52,7 @@ radiation
 
 boussinesqMetal
 {
-    type    BoussinesqForce;
+    type    boussinesqForce;
     phase   metal;
     beta    5e-6;
     T0      1658;
@@ -60,11 +60,11 @@ boussinesqMetal
 
 boussinesqGas
 {
-    type    BoussinesqForce;
+    type    boussinesqForce;
     phase   gas;
     beta    4e-5;
     T0      300;
 }
 
 
-//************************************************************************ //
+// ************************************************************************* //

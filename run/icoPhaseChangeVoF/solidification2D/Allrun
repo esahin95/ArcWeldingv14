@@ -7,18 +7,17 @@ cd ${0%/*} || exit 1    # Run from this directory
 # pre-processing
 runApplication blockMesh
 runApplication checkMesh
-runApplication setFields
 
 # run in parallel
 if [ "$1" = "parallel" ]
 then
     # run in parallel mode
     runApplication decomposePar -cellProc
-    runParallel $(getApplication)
+    runParallel foamRun
     runApplication reconstructPar
 else
     # run in serial mode
-    runApplication $(getApplication)
+    runApplication foamRun
 fi
 
 #------------------------------------------------------------------------------

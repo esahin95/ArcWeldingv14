@@ -1,0 +1,23 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  14
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      functions;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#includeFunc cellMax(name=cellMax, p_rgh, T, mDot.metal, pRec.metal, log=yes)
+#includeFunc cellMin(name=cellMin, p_rgh, T, mDot.metal, pRec.metal, log=yes)
+
+#includeFunc evaporation
+
+
+// ************************************************************************* //

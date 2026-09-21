@@ -75,6 +75,21 @@ protected:
         mutable volScalarField dsdT_;
 
 
+private:
+
+    // Private Member Functions
+
+        //- Set the slope dsdT and temperature T0 linearising the solid
+        //  fraction s at temperature T
+        void linearise
+        (
+            const scalar T,
+            const scalar s,
+            scalar& dsdT,
+            scalar& T0
+        ) const;
+
+
 public:
 
     //- Runtime type information

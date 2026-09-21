@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Version:  13
+    \\  /    A nd           | Version:  14
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 Description
@@ -18,7 +18,7 @@ writeControl writeTime;
 // Access evaporation parameters
 eps     ${${FOAM_CASE}/constant/fvModels!radiation/eps};
 T0      ${${FOAM_CASE}/constant/fvModels!radiation/T0};
-TP      ${${FOAM_CASE}/system/setFieldsDict!zones/plate/values/T};
+TP      ${${FOAM_CASE}/0/T!T0};
 
 codeInclude
 #{

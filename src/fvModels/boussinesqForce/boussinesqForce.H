@@ -25,12 +25,37 @@ Class
     Foam::fv::boussinesqForce
 
 Description
-    Must be updated. ---IGNORE---    
-    Discrete Tray Radiation Method for collimated radiation flux, derived
-    from the implementation given in OpenFOAM-v2512.
+    Boussinesq buoyancy force on a constant-density VoF phase, added to the
+    mixture momentum equation.
 
-    The ray is considered planar and developed to work with a solver
-    derived from compressibleVoF.
+    The density of the phase is taken to vary with temperature as
+    rho*(1 - beta*(T - T0)). The momentum equation already contains the
+    gravity force on the constant density rho, so only the variation is
+    added:
+
+        -alpha*rho*beta*(T - T0)*g
+
+    where alpha is the phase fraction, beta the thermal expansion coefficient
+    and T0 the reference temperature. The phase must have a constant-density
+    equation of state, and g is read from constant/g.
+
+Usage
+    \verbatim
+    boussinesqForce
+    {
+        type    boussinesqForce;
+        phase   metal;
+        beta    5e-5;
+        T0      1700;
+    }
+    \endverbatim
+
+    \table
+        Property | Description                   | Required | Default
+        phase    | Name of the buoyant phase     | yes      |
+        beta     | Thermal expansion coefficient | yes      |
+        T0       | Reference temperature         | yes      |
+    \endtable
 
 SourceFiles
     boussinesqForce.C

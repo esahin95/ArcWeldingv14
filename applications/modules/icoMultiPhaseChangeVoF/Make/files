@@ -3,4 +3,4 @@ thermophysicalPredictor.C
 
 icoMultiPhaseChangeVoF.C
 
-LIB = $(FOAM_USER_LIBBIN)/libicoMultiPhaseChangeVoF
+LIB = $(FOAM_USER_LIBBIN)/libicoMultiPhaseChangeVoFSolver

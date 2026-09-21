@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Version:  13
+    \\  /    A nd           | Version:  14
      \\/     M anipulation  |
 \*---------------------------------------------------------------------------*/
 FoamFile
@@ -33,7 +33,7 @@ laser
         Q       1.0;
         powerDist constant 1;
         nRays   400;
-    };
+    }
 
     reflectionModel
     {
@@ -42,9 +42,9 @@ laser
         N       5.83e29;
         sigma   1e6;
         lambda  1.064e-6;
-    };
+    }
 
     setFormat vtk;
 }
 
-//************************************************************************ //
+// ************************************************************************* //

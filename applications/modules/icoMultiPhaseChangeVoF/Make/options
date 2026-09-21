@@ -34,6 +34,6 @@ LIB_LIBS = \
     -lfvConstraints \
     -lsampling \
     -L$(FOAM_USER_LIBBIN) \
-    -licoMulticomponentVoF \
+    -licoMulticomponentVoFSolver \
     -lsolidificationModels \
     -levaporationModels

@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Version:  10
+    \\  /    A nd           | Version:  14
      \\/     M anipulation  |
 \*---------------------------------------------------------------------------*/
 FoamFile
@@ -13,8 +13,6 @@ FoamFile
     object      controlDict;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-application     foamRun;
 
 solver          icoPhaseChangeVoF;
 
@@ -54,9 +52,6 @@ maxDiCo         1000.0;
 
 maxDeltaT       5e-5;
 
-
-// ************************************************************************* //
-
 DebugSwitches
 {
     greyBodyRadiation 1;
@@ -67,9 +62,4 @@ OptimisationSwitches
     fileHandler collated;
 }
 
-functions
-{
-    #includeFunc cellMax;
-    #includeFunc cellMin;
-    #includeFunc radiation;
-}
+// ************************************************************************* //

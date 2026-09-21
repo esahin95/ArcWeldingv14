@@ -22,7 +22,7 @@ EXE_INC = \
 
 LIB_LIBS = \
     -L$(FOAM_USER_LIBBIN) \
-    -licoThermoVoF \
+    -licoThermoVoFSolver \
     -lsolidificationModels \
     -levaporationModels \
     -lcompressibleVoFSolver \

@@ -3,4 +3,4 @@ thermophysicalPredictor.C
 
 icoThermoVoF.C
 
-LIB = $(FOAM_USER_LIBBIN)/libicoThermoVoF
+LIB = $(FOAM_USER_LIBBIN)/libicoThermoVoFSolver

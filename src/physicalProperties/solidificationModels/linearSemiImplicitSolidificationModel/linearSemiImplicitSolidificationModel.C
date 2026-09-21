@@ -45,27 +45,23 @@ namespace solidificationModels
 }
 
 
-// * * * * * * * * * * * * * * * Local Functions * * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-namespace
-{
-
-// Set the slope dsdT and temperature T0 linearising the solid fraction s at
-// temperature T
-void linearise
+void Foam::solidificationModels::linearSemiImplicit::linearise
 (
-    const Foam::scalar T,
-    const Foam::scalar s,
-    const Foam::scalar Tliq,
-    const Foam::scalar Tsol,
-    Foam::scalar& dsdT,
-    Foam::scalar& T0
-)
+    const scalar T,
+    const scalar s,
+    scalar& dsdT,
+    scalar& T0
+) const
 {
     // Slope driving the solid fraction back to its bounds outside the
     // mushy zone
-    const Foam::scalar slope = 1e10;
-    const Foam::scalar tol = 1e-3;
+    const scalar slope = 1e10;
+    const scalar tol = 1e-3;
+
+    const scalar Tliq = Tliq_.value();
+    const scalar Tsol = Tsol_.value();
 
     if (T > Tliq)
     {
@@ -98,8 +94,6 @@ void linearise
         dsdT = -1.0/(Tliq - Tsol);
         T0 = Tsol + (s - 1.0)/dsdT;
     }
-}
-
 }
 
 
@@ -161,13 +155,10 @@ void Foam::solidificationModels::linearSemiImplicit::addSup
     fvMatrix<scalar>& eqn
 ) const
 {
-    const scalar Tliq = Tliq_.value();
-    const scalar Tsol = Tsol_.value();
-
     // Linearise the solid fraction in the cells ...
     forAll(dsdT_, celli)
     {
-        linearise(T_[celli], sf_[celli], Tliq, Tsol, dsdT_[celli], T0_[celli]);
+        linearise(T_[celli], sf_[celli], dsdT_[celli], T0_[celli]);
     }
 
     // ... and on the boundary faces
@@ -180,15 +171,7 @@ void Foam::solidificationModels::linearSemiImplicit::addSup
 
         forAll(Tp, facei)
         {
-            linearise
-            (
-                Tp[facei],
-                sfp[facei],
-                Tliq,
-                Tsol,
-                dsdTp[facei],
-                T0p[facei]
-            );
+            linearise(Tp[facei], sfp[facei], dsdTp[facei], T0p[facei]);
         }
     }
 

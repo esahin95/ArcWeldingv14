@@ -6,4 +6,4 @@ thermophysicalPredictor.C
 pressureCorrector.C
 icoMulticomponentVoF.C
 
-LIB = $(FOAM_USER_LIBBIN)/libicoMulticomponentVoF
+LIB = $(FOAM_USER_LIBBIN)/libicoMulticomponentVoFSolver

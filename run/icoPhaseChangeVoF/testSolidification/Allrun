@@ -10,7 +10,7 @@ runApplication checkMesh
 
 # run in parallel
 runApplication decomposePar -cellProc
-runParallel $(getApplication)
+runParallel foamRun
 runApplication reconstructPar
 
 foamPostProcess -noZero -func locateInterface

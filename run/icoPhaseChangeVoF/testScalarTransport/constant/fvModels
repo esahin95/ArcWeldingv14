@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Version:  13
+    \\  /    A nd           | Version:  14
      \\/     M anipulation  |
 \*---------------------------------------------------------------------------*/
 FoamFile
@@ -16,7 +16,7 @@ FoamFile
 
 boussinesq
 {
-    type    BoussinesqForce;
+    type    boussinesqForce;
 
     phase   water;
 
@@ -27,7 +27,7 @@ boussinesq
 
 boussinesqGas
 {
-    type    BoussinesqForce;
+    type    boussinesqForce;
 
     phase   air;
 
@@ -36,4 +36,4 @@ boussinesqGas
     T0      300;
 }
 
-//************************************************************************ //
+// ************************************************************************* //
