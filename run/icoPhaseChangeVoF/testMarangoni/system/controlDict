@@ -22,7 +22,7 @@ startTime       0;
 
 stopAt          endTime;
 
-endTime         0.5;
+endTime         0.3;
 
 deltaT          1e-6;
 
@@ -51,15 +51,5 @@ maxAlphaCo      0.5;
 maxDiCo         500000.0;
 
 maxDeltaT       5e-4;
-
-DebugSwitches
-{
-    MULES           1;
-}
-
-OptimisationSwitches
-{
-    fileHandler collated;
-}
 
 // ************************************************************************* //

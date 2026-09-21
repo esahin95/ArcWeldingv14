@@ -8,17 +8,23 @@ cd ${0%/*} || exit 1    # Run from this directory
 runApplication blockMesh
 runApplication checkMesh
 
-# run in parallel
-runApplication decomposePar -cellProc
-runParallel foamRun
-runApplication reconstructPar
+if [ "$1" = "serial" ]
+then
+    # run in serial mode
+    runApplication foamRun
+else
+    # run in parallel mode
+    runApplication decomposePar -cellProc
+    runParallel foamRun
+    runApplication reconstructPar
+fi
 
 foamPostProcess -noZero -func locateInterface
 
 . $WM_PROJECT_USER_DIR/.venv/bin/activate
 NAME="comparison.pdf"
 python3 compare.py $NAME
-wslview $NAME
+explorer.exe $NAME
 deactivate
 
 #------------------------------------------------------------------------------

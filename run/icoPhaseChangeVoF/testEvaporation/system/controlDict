@@ -52,14 +52,4 @@ maxDiCo         5.0;
 
 maxDeltaT       1e-6;
 
-DebugSwitches
-{
-    evaporationModel 1;
-}
-
-OptimisationSwitches
-{
-    fileHandler collated;
-}
-
 // ************************************************************************* //

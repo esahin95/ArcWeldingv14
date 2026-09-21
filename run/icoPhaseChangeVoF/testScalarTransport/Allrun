@@ -8,15 +8,15 @@ cd ${0%/*} || exit 1    # Run from this directory
 runApplication blockMesh
 runApplication checkMesh
 
-if [ "$1" = "parallel" ]
+if [ "$1" = "serial" ]
 then
+    # run in serial mode
+    runApplication foamRun
+else
     # run in parallel mode
     runApplication decomposePar -cellProc
     runParallel foamRun
     runApplication reconstructPar
-else
-    # run in serial mode
-    runApplication foamRun
 fi
 
 foamPostProcess -noZero -func heatMass | tee log.heatMass

@@ -52,14 +52,4 @@ maxDiCo         500.0;
 
 maxDeltaT       1e-6;
 
-DebugSwitches
-{
-    laserDTRM       1;
-}
-
-OptimisationSwitches
-{
-    fileHandler collated;
-}
-
 // ************************************************************************* //

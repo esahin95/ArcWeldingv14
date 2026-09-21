@@ -10,46 +10,19 @@ FoamFile
     format      ascii;
     class       dictionary;
     location    "system";
-    object      controlDict;
+    object      configDict;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-solver          icoPhaseChangeVoF;
+DebugSwitches
+{
+    solidificationModel 1;
+    evaporationModel    1;
+}
 
-startFrom       startTime;
-
-startTime       0;
-
-stopAt          endTime;
-
-endTime         10.0;
-
-deltaT          1e-5;
-
-writeControl    adjustableRunTime;
-
-writeInterval   0.5;
-
-purgeWrite      0;
-
-writeFormat     binary;
-
-writePrecision  6;
-
-writeCompression off;
-
-timeFormat      general;
-
-timePrecision   6;
-
-runTimeModifiable yes;
-
-adjustTimeStep  yes;
-
-maxCo           0.2;
-maxAlphaCo      0.2;
-maxDiCo         10000;
-
-maxDeltaT       1e-3;
+OptimisationSwitches
+{
+    fileHandler         collated;
+}
 
 // ************************************************************************* //

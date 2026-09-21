@@ -52,15 +52,4 @@ maxDiCo         15;
 
 maxDeltaT       1e-2;
 
-DebugSwitches
-{
-    solidificationModel 1;
-    evaporationModel 1;
-}
-
-OptimisationSwitches
-{
-    fileHandler collated;
-}
-
 // ************************************************************************* //

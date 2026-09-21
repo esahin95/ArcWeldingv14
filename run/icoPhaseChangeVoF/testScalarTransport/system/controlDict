@@ -52,15 +52,4 @@ maxDiCo         100;
 
 maxDeltaT       1;
 
-DebugSwitches
-{
-    MULES           1;
-    boussinesqForce 1;
-}
-
-OptimisationSwitches
-{
-    fileHandler collated;
-}
-
 // ************************************************************************* //

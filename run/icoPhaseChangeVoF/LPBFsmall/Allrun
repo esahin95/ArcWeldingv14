@@ -9,15 +9,15 @@ runApplication blockMesh
 runApplication refineMesh
 runApplication checkMesh
 
-if [ "$1" = "parallel" ]
+if [ "$1" = "serial" ]
 then
+    # run in serial mode
+    runApplication foamRun
+else
     # run in parallel mode
     runApplication decomposePar -cellProc
     runParallel foamRun
     runApplication reconstructPar
-else
-    # run in serial mode
-    runApplication foamRun
 fi
 
 #------------------------------------------------------------------------------

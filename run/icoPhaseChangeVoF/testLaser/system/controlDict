@@ -51,15 +51,4 @@ maxAlphaCo      0.5;
 maxDiCo         1000.0;
 maxDeltaT       1;
 
-DebugSwitches
-{
-    laserDTRM   1;
-    reflectionModel 1;
-}
-
-OptimisationSwitches
-{
-    fileHandler collated;
-}
-
 // ************************************************************************* //

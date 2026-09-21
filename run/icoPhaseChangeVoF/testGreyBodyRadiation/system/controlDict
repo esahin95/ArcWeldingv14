@@ -52,14 +52,4 @@ maxDiCo         1000.0;
 
 maxDeltaT       5e-5;
 
-DebugSwitches
-{
-    greyBodyRadiation 1;
-}
-
-OptimisationSwitches
-{
-    fileHandler collated;
-}
-
 // ************************************************************************* //
