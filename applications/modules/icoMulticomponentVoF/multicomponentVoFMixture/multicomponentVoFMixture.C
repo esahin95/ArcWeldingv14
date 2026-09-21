@@ -24,12 +24,9 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "multicomponentVoFMixture.H"
-
-#include "correctContactAngle.H"
 #include "surfaceInterpolate.H"
 #include "fvcGrad.H"
 #include "fvcSnGrad.H"
-#include "fvcDiv.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -39,23 +36,15 @@ namespace Foam
 }
 
 
-// * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
-
-
-
-
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::multicomponentVoFMixture::multicomponentVoFMixture
-(
-    const fvMesh& mesh
-)
+Foam::multicomponentVoFMixture::multicomponentVoFMixture(const fvMesh& mesh)
 :
     compressibleMultiphaseVoFMixture(mesh),
 
     phases_(phases()),
 
-    missible_(phases().size(), false),
+    miscible_(phases().size(), false),
 
     rhoCp_
     (
@@ -73,27 +62,25 @@ Foam::multicomponentVoFMixture::multicomponentVoFMixture
 
     Dm_(phases().size())
 {
-    {
-        wordList missible(lookup("missible"));
-        forAll(phases_, phasei)
-        {
-            forAll(missible, phasej)
-            {
-                missible_[phasei] =
-                    missible_[phasei] ||
-                    (
-                        phases_[phasei].name() == missible[phasej]
-                    );
-            }
+    const wordList miscibleNames
+    (
+        lookupBackwardsCompatible<wordList>({"miscible", "missible"})
+    );
 
-            phases_[phasei].vDot().writeOpt() = IOobject::NO_WRITE;
-        }
-        Info<< "Missible phases: " << missible_ << endl;
+    forAll(phases_, phasei)
+    {
+        miscible_[phasei] =
+            findIndex(miscibleNames, phases_[phasei].name()) != -1;
+
+        phases_[phasei].vDot().writeOpt() = IOobject::NO_WRITE;
     }
+
+    Info<< "Miscible phases: " << miscible_ << endl;
 
     if (found("sigmaDicts"))
     {
         const dictTable sigmaDicts(lookup("sigmaDicts"));
+
         forAllConstIter(dictTable, sigmaDicts, iter)
         {
             sigmaPtrs_.insert
@@ -110,18 +97,12 @@ Foam::multicomponentVoFMixture::multicomponentVoFMixture
             dictionary dict;
             dict.add("sigma", iter());
 
-            sigmaPtrs_.insert
-            (
-                iter.key(),
-                surfaceTensionModel::New
-                (
-                    dict,
-                    mesh
-                )
-            );
+            sigmaPtrs_.insert(iter.key(), surfaceTensionModel::New(dict, mesh));
         }
     }
 
+    // Check that every immiscible pair has a surface tension and every
+    // miscible pair a diffusion coefficient
     forAll(phases_, phasei)
     {
         const compressibleVoFphase& alpha1 = phases_[phasei];
@@ -129,27 +110,20 @@ Foam::multicomponentVoFMixture::multicomponentVoFMixture
         for (label phasej = phasei+1; phasej<phases_.size(); phasej++)
         {
             const compressibleVoFphase& alpha2 = phases_[phasej];
+            const interfacePair pair(alpha1, alpha2);
 
-            sigmaPtrTable::const_iterator sigmaPtr =
-                sigmaPtrs_.find(interfacePair(alpha1, alpha2));
-
-            if (sigmaPtr == sigmaPtrs_.end() && !missible(phasei, phasej))
+            if (!sigmaPtrs_.found(pair) && !miscible(phasei, phasej))
             {
                 FatalErrorInFunction
-                    << "Cannot find interface "
-                    << interfacePair(alpha1, alpha2)
+                    << "Cannot find interface " << pair
                     << " in list of sigma dictionaries"
                     << exit(FatalError);
             }
 
-            sigmaTable::const_iterator D =
-                Ds_.find(interfacePair(alpha1, alpha2));
-
-            if (D == Ds_.end() && missible(phasei, phasej))
+            if (!Ds_.found(pair) && miscible(phasei, phasej))
             {
                 FatalErrorInFunction
-                    << "Cannot find binary mass diffusion "
-                    << interfacePair(alpha1, alpha2)
+                    << "Cannot find binary mass diffusion " << pair
                     << " in list of interfaces"
                     << exit(FatalError);
             }
@@ -169,9 +143,7 @@ Foam::multicomponentVoFMixture::multicomponentVoFMixture
                     mesh_.time().name(),
                     mesh_,
                     IOobject::NO_READ,
-                    debug ?
-                    IOobject::AUTO_WRITE :
-                    IOobject::NO_WRITE
+                    debug ? IOobject::AUTO_WRITE : IOobject::NO_WRITE
                 ),
                 mesh,
                 dimensionedScalar(dimKinematicViscosity, Zero)
@@ -185,7 +157,7 @@ Foam::multicomponentVoFMixture::multicomponentVoFMixture
 }
 
 
-// * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 Foam::tmp<Foam::surfaceScalarField>
 Foam::multicomponentVoFMixture::surfaceTensionForce
@@ -213,34 +185,31 @@ Foam::multicomponentVoFMixture::surfaceTensionForce
         {
             const compressibleVoFphase& alpha2 = phases_[phasej];
 
+            sigmaPtrTable::const_iterator sigmaPtr =
+                sigmaPtrs_.find(interfacePair(alpha1, alpha2));
+
+            // No surface tension between miscible phases
+            if (sigmaPtr == sigmaPtrs_.end())
+            {
+                continue;
+            }
+
             tmp<volScalarField> tsigma
             (
                 volScalarField::New("sigma", mesh_, dimSigma_)
             );
             volScalarField& sigma = tsigma.ref();
-
-            sigmaPtrTable::const_iterator sigmaPtr =
-                sigmaPtrs_.find(interfacePair(alpha1, alpha2));
-
-            if (sigmaPtr == sigmaPtrs_.end())
-            {
-                sigma = Zero;
-            }
-            else
-            {
-                sigma = sigmaPtr()->sigma();
-            }
+            sigma = sigmaPtr()->sigma();
 
             const surfaceVectorField gradSigma
             (
                 fvc::interpolate(fvc::grad(sigma))
             );
 
-            const surfaceVectorField nHat
-            (
-                nHatfv(alpha1, alpha2)
-            );
+            const surfaceVectorField nHat(nHatfv(alpha1, alpha2));
 
+            // Normal force from the curvature, and tangential (Marangoni)
+            // force from the surface tension gradient along the interface
             stf += fvc::interpolate(sigma*K(alpha1, alpha2, U))*
                 (
                     fvc::interpolate(alpha2)*fvc::snGrad(alpha1)
@@ -262,12 +231,6 @@ Foam::multicomponentVoFMixture::surfaceTensionForce
     }
 
     return tstf;
-}
-
-
-void Foam::multicomponentVoFMixture::correctThermo()
-{
-    compressibleMultiphaseVoFMixture::correctThermo();
 }
 
 
@@ -301,24 +264,13 @@ Foam::tmp<Foam::volScalarField> Foam::multicomponentVoFMixture::kappaEff
 
     for (label phasei=1; phasei<phases_.size(); phasei++)
     {
+        const rhoFluidThermo& thermo = phases_[phasei].thermo();
+
         tkappaEff.ref() +=
-            phases_[phasei]
-           *(
-               phases_[phasei].thermo().kappa()
-             + phases_[phasei].thermo().rho()*phases_[phasei].thermo().Cp()*nut
-            );
+            phases_[phasei]*(thermo.kappa() + thermo.rho()*thermo.Cp()*nut);
     }
 
     return tkappaEff;
-}
-
-const Foam::volScalarField& Foam::multicomponentVoFMixture::Dm
-(
-    const label phasei
-) const
-{
-    // volScalarField::New("Dm", rho()*Dm_[phasei])
-    return Dm_[phasei];
 }
 
 
@@ -337,8 +289,9 @@ Foam::tmp<Foam::surfaceScalarField> Foam::multicomponentVoFMixture::j
 }
 
 
-void Foam::multicomponentVoFMixture::updateDm() const
+void Foam::multicomponentVoFMixture::updateDm()
 {
+    // Total molar concentration
     volScalarField rhoByW
     (
         volScalarField::New
@@ -366,11 +319,13 @@ void Foam::multicomponentVoFMixture::updateDm() const
         )
     );
 
-    dimensionedScalar lBound(sumRhoByWD.dimensions(), 1);
+    // Regularisation of the denominator where a phase is on its own
+    const dimensionedScalar lBound(sumRhoByWD.dimensions(), 1);
 
     forAll(phases_, phasei)
     {
-        if (!missible_[phasei]) continue;
+        if (!miscible_[phasei]) continue;
+
         const compressibleVoFphase& alpha1 = phases_[phasei];
 
         sumRhoByWD = Zero;
@@ -378,15 +333,16 @@ void Foam::multicomponentVoFMixture::updateDm() const
         forAll(phases_, phasej)
         {
             const compressibleVoFphase& alpha2 = phases_[phasej];
+
             if (&alpha1 == &alpha2) continue;
 
             sigmaTable::const_iterator D =
                 Ds_.find(interfacePair(alpha1, alpha2));
 
-            dimensionedScalar rDij
+            const dimensionedScalar rDij
             (
                 dimless/dimKinematicViscosity,
-                D == Ds_.end()? 1e8 : 1.0/max(D(), 1e-8)
+                D == Ds_.end() ? 1e8 : 1.0/max(D(), 1e-8)
             );
 
             sumRhoByWD += alpha2
@@ -396,13 +352,10 @@ void Foam::multicomponentVoFMixture::updateDm() const
         }
 
         Dm_[phasei] =
-            (
-                rhoByW - alpha1*alpha1.thermo().rho()/alpha1.thermo().W()
-            ) /
-            (
-                sumRhoByWD + lBound
-            );
+            (rhoByW - alpha1*alpha1.thermo().rho()/alpha1.thermo().W())
+           /(sumRhoByWD + lBound);
     }
 }
+
 
 // ************************************************************************* //

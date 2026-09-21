@@ -2,51 +2,42 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Version:  13
+    \\  /    A nd           | Version:  14
      \\/     M anipulation  |
 \*---------------------------------------------------------------------------*/
 FoamFile
 {
     format      ascii;
     class       volScalarField;
+    location    "0";
     object      p_rgh;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-dimensions      [1 -1 -2 0 0 0 0];
+dimensions      [pressure];
 
 internalField   uniform 1e5;
 
 boundaryField
 {
-    leftWall
+    "(right|left|bottom)"
     {
         type            fixedFluxPressure;
         value           $internalField;
     }
 
-    rightWall
-    {
-        type            fixedFluxPressure;
-        value           $internalField;
-    }
-
-    lowerWall
-    {
-        type            fixedFluxPressure;
-        value           $internalField;
-    }
-
-    atmosphere
+    top
     {
         type            prghTotalPressure;
-        p0              uniform 1e5;
+        p0              $internalField;
+        value           $internalField;
     }
 
-    defaultFaces
+    "(front|back)"
     {
         type            empty;
     }
 }
+
 
 // ************************************************************************* //

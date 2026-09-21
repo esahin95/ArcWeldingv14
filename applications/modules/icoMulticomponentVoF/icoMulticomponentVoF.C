@@ -24,11 +24,10 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "icoMulticomponentVoF.H"
-#include "geometricZeroField.H"
 #include "fvcDdt.H"
 #include "fvcDiv.H"
-#include "addToRunTimeSelectionTable.H"
 #include "zeroGradientFvPatchField.H"
+#include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -42,7 +41,7 @@ namespace solvers
 }
 
 
-// * * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * //
+// * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
 
 Foam::tmp<Foam::surfaceScalarField>
 Foam::solvers::icoMulticomponentVoF::surfaceTensionForce() const
@@ -53,27 +52,15 @@ Foam::solvers::icoMulticomponentVoF::surfaceTensionForce() const
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::solvers::icoMulticomponentVoF::icoMulticomponentVoF
-(
-    fvMesh& mesh
-)
+Foam::solvers::icoMulticomponentVoF::icoMulticomponentVoF(fvMesh& mesh)
 :
     multiphaseVoFSolver
     (
         mesh,
-        autoPtr<multiphaseVoFMixture>
-        (
-            new multicomponentVoFMixture(mesh)
-        )
+        autoPtr<multiphaseVoFMixture>(new multicomponentVoFMixture(mesh))
     ),
 
-    mixture
-    (
-        refCast<multicomponentVoFMixture>
-        (
-            multiphaseVoFSolver::mixture
-        )
-    ),
+    mixture(refCast<multicomponentVoFMixture>(multiphaseVoFSolver::mixture)),
 
     phases(mixture.phases()),
 
@@ -117,7 +104,7 @@ Foam::solvers::icoMulticomponentVoF::icoMulticomponentVoF
                 IOobject::AUTO_WRITE
             ),
             mesh,
-            dimensionedScalar(dimDensity/dimTime, 0.0),
+            dimensionedScalar(dimDensity/dimTime, 0),
             zeroGradientFvPatchField<scalar>::typeName
         )
     )
@@ -148,8 +135,6 @@ Foam::solvers::icoMulticomponentVoF::icoMulticomponentVoF
 
     forAll(phases, phasei)
     {
-        const compressibleVoFphase& alpha = phases[phasei];
-
         alphaRhoPhis_.set
         (
             phasei,
@@ -157,12 +142,12 @@ Foam::solvers::icoMulticomponentVoF::icoMulticomponentVoF
             (
                 IOobject
                 (
-                    IOobject::groupName("alphaRhoPhi", alpha.name()),
+                    IOobject::groupName("alphaRhoPhi", phases[phasei].name()),
                     mesh.time().name(),
                     mesh
                 ),
                 mesh,
-                dimensionedScalar(rhoPhi.dimensions(), 0.0)
+                dimensionedScalar(rhoPhi.dimensions(), 0)
             )
         );
     }
@@ -175,54 +160,50 @@ Foam::solvers::icoMulticomponentVoF::~icoMulticomponentVoF()
 {}
 
 
-// * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 Foam::scalar Foam::solvers::icoMulticomponentVoF::maxDeltaT() const
 {
     scalar deltaT = multiphaseVoFSolver::maxDeltaT();
 
     const scalarField& V = mesh.V().primitiveField();
+    const scalar deltaTValue = runTime.deltaTValue();
 
+    // Thermal diffusion number: sum of the face conductances relative to the
+    // cell heat capacity
     {
         const scalarField sumDif
         (
             fvc::surfaceSum
             (
                 mesh.magSf()
-                * fvc::interpolate(mixture.kappaEff(momentumTransport.nut()))
-                * mesh.surfaceInterpolation::deltaCoeffs()
+               *fvc::interpolate(mixture.kappaEff(momentumTransport.nut()))
+               *mesh.surfaceInterpolation::deltaCoeffs()
             )().primitiveField()
         );
 
-        const scalarField sumDiv
-        (
-            V*rhoCp().primitiveField()
-        );
+        const scalarField sumDiv(V*rhoCp.primitiveField());
 
-        const scalar diCoNum =
-            gMax(sumDif/sumDiv)*runTime.deltaTValue();
+        const scalar enCoNum = gMax(sumDif/sumDiv)*deltaTValue;
+        const scalar meanEnCoNum = gSum(sumDif)/gSum(sumDiv)*deltaTValue;
 
-        const scalar meanDiCoNum =
-            gSum(sumDif)/gSum(sumDiv)*runTime.deltaTValue();
+        Info<< "Thermal Courant Number mean: " << meanEnCoNum
+            << " max: " << enCoNum << endl;
 
-        Info<< "Thermal Courant Number mean: " << meanDiCoNum
-            << " max: " << diCoNum << endl;
+        const scalar maxEnCo = runTime.controlDict().lookup<scalar>("maxEnCo");
 
-        const scalar maxDiCo =
-            runTime.controlDict().lookup<scalar>("maxEnCo");
-
-        if (diCoNum > small)
+        if (enCoNum > small)
         {
-            deltaT = min(deltaT, maxDiCo/diCoNum*runTime.deltaTValue());
+            deltaT = min(deltaT, maxEnCo/enCoNum*deltaTValue);
         }
     }
 
+    // Mass diffusion number: the largest of the phases
     {
-        scalar diCoNum = 0.0;
-        scalar meanDiCoNum = 0.0;
+        scalar diCoNum = 0;
+        scalar meanDiCoNum = 0;
 
-        const scalarField& V = mesh.V().primitiveField();
-        const scalar deltaTBySumV = runTime.deltaTValue()/gSum(V);
+        const scalar deltaTBySumV = deltaTValue/gSum(V);
 
         forAll(phases, phasei)
         {
@@ -231,30 +212,29 @@ Foam::scalar Foam::solvers::icoMulticomponentVoF::maxDeltaT() const
                 fvc::surfaceSum
                 (
                     mesh.magSf()
-                    * fvc::interpolate(mixture.Dm(phasei))
-                    * mesh.surfaceInterpolation::deltaCoeffs()
+                   *fvc::interpolate(mixture.Dm(phasei))
+                   *mesh.surfaceInterpolation::deltaCoeffs()
                 )().primitiveField()
             );
 
-            diCoNum = max(diCoNum, gMax(sumDif/V)*runTime.deltaTValue());
-
+            diCoNum = max(diCoNum, gMax(sumDif/V)*deltaTValue);
             meanDiCoNum = max(meanDiCoNum, gSum(sumDif)*deltaTBySumV);
         }
 
         Info<< "Diffusion Courant Number mean: " << meanDiCoNum
             << " max: " << diCoNum << endl;
 
-        const scalar maxDiCo =
-            runTime.controlDict().lookup<scalar>("maxDiCo");
+        const scalar maxDiCo = runTime.controlDict().lookup<scalar>("maxDiCo");
 
         if (diCoNum > small)
         {
-            deltaT = min(deltaT, maxDiCo/diCoNum*runTime.deltaTValue());
+            deltaT = min(deltaT, maxDiCo/diCoNum*deltaTValue);
         }
     }
 
     return deltaT;
 }
+
 
 void Foam::solvers::icoMulticomponentVoF::prePredictor()
 {
@@ -262,12 +242,13 @@ void Foam::solvers::icoMulticomponentVoF::prePredictor()
 
     multiphaseVoFSolver::prePredictor();
 
+    // Continuity error, less the phase mass sources
     contErr.ref() = fvc::ddt(rho)() + fvc::div(rhoPhi)();
 
-    forAll(mixture.phases(), phasei)
+    forAll(phases, phasei)
     {
-        const volScalarField& rho = phases[phasei].thermo().rho();
-        contErr.ref() -= (fvModels().source(phases[phasei], rho)&rho)();
+        const volScalarField& rhoi = phases[phasei].thermo().rho();
+        contErr.ref() -= (fvModels().source(phases[phasei], rhoi)&rhoi)();
     }
 
     contErr.ref().correctBoundaryConditions();
@@ -280,8 +261,7 @@ void Foam::solvers::icoMulticomponentVoF::momentumTransportPredictor()
 }
 
 
-void Foam::solvers::icoMulticomponentVoF::
-thermophysicalTransportPredictor()
+void Foam::solvers::icoMulticomponentVoF::thermophysicalTransportPredictor()
 {}
 
 
@@ -291,8 +271,7 @@ void Foam::solvers::icoMulticomponentVoF::momentumTransportCorrector()
 }
 
 
-void Foam::solvers::icoMulticomponentVoF::
-thermophysicalTransportCorrector()
+void Foam::solvers::icoMulticomponentVoF::thermophysicalTransportCorrector()
 {}
 
 

@@ -24,14 +24,11 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "icoMultiPhaseChangeVoF.H"
-#include "fvmSup.H"
-
 #include "fvmDiv.H"
 #include "fvcSnGrad.H"
 #include "fvcReconstruct.H"
 
-// * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
-
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 void Foam::solvers::icoMultiPhaseChangeVoF::momentumPredictor()
 {
@@ -47,7 +44,7 @@ void Foam::solvers::icoMultiPhaseChangeVoF::momentumPredictor()
     );
     fvVectorMatrix& UEqn = tUEqn.ref();
 
-    // add phase change contribution
+    // Add the phase change sources
     addSup(UEqn);
 
     UEqn.relax();

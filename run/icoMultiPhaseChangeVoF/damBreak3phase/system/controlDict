@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Version:  13
+    \\  /    A nd           | Version:  14
      \\/     M anipulation  |
 \*---------------------------------------------------------------------------*/
 FoamFile
@@ -48,24 +48,9 @@ adjustTimeStep  yes;
 
 maxCo           0.5;
 maxAlphaCo      0.5;
+maxEnCo         10000;
+maxDiCo         1;
 
 maxDeltaT       1;
 
 // ************************************************************************* //
-
-DebugSwitches
-{
-    MULES   1;
-    multicomponentVoFMixture 1;
-}
-
-OptimisationSwitches
-{
-    fileHandler collated;
-}
-
-functions
-{
-    #includeFunc cellMax;
-    #includeFunc cellMin;
-}

@@ -25,20 +25,62 @@ Class
     Foam::multicomponentVoFMixture
 
 Description
-    Compressible multiphase mixture for interface-capturing simulations.
+    Incompressible multiphase mixture for interface-capturing simulations in
+    which some of the phases may be miscible.
 
-    Derived from viscosity so that it can be used in conjunction with the
-    compressible turbulence models.
+    Surface tension, including the Marangoni force of a temperature dependent
+    surface tension, and contact angles are handled for the interface between
+    each pair of immiscible phases. Between miscible phases there is no
+    surface tension and no interface compression, but mass diffusion with the
+    flux j_i = -D_i*grad(alpha_i). The mixture-averaged diffusion coefficient
+    D_i of phase i follows from the binary coefficients D_ij and the molar
+    concentrations c_j = alpha_j*rho_j/W_j:
 
-    Surface tension and contact-angle is handled for the interface between each
-    phase-pair. Surface tension and interface compression are ignored between
-    missible phases, which have diffusion instead.
+        D_i = (c - c_i)/(sum_{j != i}(c_j/D_ij) + 1)
+
+    where c is the total molar concentration, and the 1 [mol s/m^5] avoids
+    the division by zero where phase i is on its own. Binary coefficients are
+    limited to at least 1e-8 m^2/s, which is also used for the pairs without
+    one. The diffusion coefficients are written as Dm.<phase> in debug mode.
+
+Usage
+    Entries of constant/phaseProperties in addition to those of
+    compressibleMultiphaseVoFMixture:
+    \table
+        Property   | Description                           | Required
+        miscible   | Names of the miscible phases          | yes
+        Ds         | Binary diffusion coefficients of the miscible phase \\
+                     pairs                                 | yes
+        sigmaDicts | Surface tension models of the phase pairs, replacing \\
+                     the constant values of sigmas         | no
+    \endtable
+
+    Example:
+    \verbatim
+    phases      (water oil air);
+
+    miscible    (water oil);
+
+    sigmas
+    (
+        (air water)     0.07
+        (air oil)       0.07
+        (water oil)     0
+    );
+
+    Ds
+    (
+        (water oil)     1e-5
+    );
+    \endverbatim
+
+    The keyword missible is accepted in place of miscible.
 
 SourceFiles
     multicomponentVoFMixture.C
 
 See also
-    Foam::compressibleVoFMixture
+    Foam::compressibleMultiphaseVoFMixture
 
 \*---------------------------------------------------------------------------*/
 
@@ -46,9 +88,7 @@ See also
 #define multicomponentVoFMixture_H
 
 #include "compressibleMultiphaseVoFMixture.H"
-
 #include "surfaceTensionModel.H"
-#include "Function2.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -56,48 +96,56 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                      Class multicomponentVoFMixture Declaration
+                   Class multicomponentVoFMixture Declaration
 \*---------------------------------------------------------------------------*/
 
 class multicomponentVoFMixture
 :
     public compressibleMultiphaseVoFMixture
 {
+    // Private Typedefs
+
+        //- Table of surface tension models of the phase pairs
+        typedef HashTable
+        <
+            autoPtr<surfaceTensionModel>,
+            interfacePair,
+            interfacePair::hash
+        > sigmaPtrTable;
+
+        //- Table of surface tension model dictionaries of the phase pairs
+        typedef HashTable
+        <
+            dictionary,
+            interfacePair,
+            interfacePair::hash
+        > dictTable;
+
+
     // Private Data
 
         //- Phases
         UPtrListDictionary<compressibleVoFphase>& phases_;
 
-        //- Components
-        List<bool> missible_;
+        //- Is each phase miscible?
+        List<bool> miscible_;
 
-        //- Heat capacity
+        //- Volumetric heat capacity
         volScalarField rhoCp_;
 
-        //- surface tension models
-        typedef HashTable
-            <
-                dictionary,
-                interfacePair,
-                interfacePair::hash
-            > dictTable;
-        typedef HashTable
-            <
-                autoPtr<surfaceTensionModel>,
-                interfacePair,
-                interfacePair::hash
-            > sigmaPtrTable;
+        //- Surface tension models of the immiscible phase pairs
         sigmaPtrTable sigmaPtrs_;
 
-        //- Binary mass diffusion coefficient functions
+        //- Binary mass diffusion coefficients of the miscible phase pairs
         sigmaTable Ds_;
 
-        //- Mass diffusion coefficients in the mixture
-        mutable PtrList<volScalarField> Dm_;
+        //- Mixture-averaged mass diffusion coefficients of the phases
+        PtrList<volScalarField> Dm_;
 
 
 public:
 
+    //- Runtime type information
     TypeName("multicomponentVoFMixture");
 
 
@@ -114,45 +162,44 @@ public:
 
     // Member Functions
 
-        //- Surface tension force
+        //- Return the surface tension force of the immiscible interfaces
         tmp<surfaceScalarField> surfaceTensionForce
         (
             const volVectorField& U
         ) const;
 
-        //- Access heat capacity
+        //- Return the volumetric heat capacity
         const volScalarField& rhoCp() const
         {
             return rhoCp_;
         }
 
-        //- Correct the thermodynamics of each phase
-        virtual void correctThermo();
-
         //- Update properties
         virtual void correct();
 
-        //- Return effective heat conductivity for the mixture
+        //- Return the effective thermal conductivity of the mixture
         virtual tmp<volScalarField> kappaEff
         (
             const volScalarField& nut
         ) const;
 
-        //- Phases missible?
-        bool missible(label phasei, label phasej) const
+        //- Are the given phases both miscible?
+        bool miscible(const label phasei, const label phasej) const
         {
-            return missible_[phasei] && missible_[phasej];
+            return miscible_[phasei] && miscible_[phasej];
         }
 
-        //- Mixture mass diffusion for phase
-        //tmp<volScalarField> DEff(const label phasei) const;
-        const volScalarField& Dm(const label phasei) const;
+        //- Return the mass diffusion coefficient of the given phase
+        const volScalarField& Dm(const label phasei) const
+        {
+            return Dm_[phasei];
+        }
 
-        //- Mass diffusion flux for phase
+        //- Return the mass diffusion flux of the given phase
         tmp<surfaceScalarField> j(const label phasei) const;
 
-        //- Update mixture diffusion coefficients
-        void updateDm() const;
+        //- Update the mass diffusion coefficients
+        void updateDm();
 };
 
 

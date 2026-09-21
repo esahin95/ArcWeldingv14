@@ -24,10 +24,7 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "icoMultiPhaseChangeVoF.H"
-
 #include "addToRunTimeSelectionTable.H"
-
-
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -41,22 +38,15 @@ namespace solvers
 }
 
 
-// * * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * //
-
-
-
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::solvers::icoMultiPhaseChangeVoF::icoMultiPhaseChangeVoF
-(
-    fvMesh& mesh
-)
+Foam::solvers::icoMultiPhaseChangeVoF::icoMultiPhaseChangeVoF(fvMesh& mesh)
 :
     icoMulticomponentVoF(mesh),
 
-    solModels_(phases.size()),
+    solidificationModels_(phases.size()),
 
-    evaModels_(phases.size()),
+    evaporationModels_(phases.size()),
 
     nThermoCorr_
     (
@@ -70,13 +60,13 @@ Foam::solvers::icoMultiPhaseChangeVoF::icoMultiPhaseChangeVoF
 {
     forAll(phases, phasei)
     {
-        solModels_.set
+        solidificationModels_.set
         (
             phasei,
             solidificationModel::New(mesh, phases[phasei].name())
         );
 
-        evaModels_.set
+        evaporationModels_.set
         (
             phasei,
             evaporationModel::New(mesh, phases[phasei].name())
@@ -91,33 +81,33 @@ Foam::solvers::icoMultiPhaseChangeVoF::~icoMultiPhaseChangeVoF()
 {}
 
 
-// * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
 Foam::scalar Foam::solvers::icoMultiPhaseChangeVoF::correctPhaseChange()
 {
     const volScalarField& T = mixture.T();
 
-    // Correct models
-    const scalar res0 = gMax(mag(T.prevIter().v() - T.v())().primitiveField());
+    // Change of the temperature and of the phase change models
+    const scalar resT =
+        gMax(mag(T.prevIter().primitiveField() - T.primitiveField()));
 
-    scalar res1 = 0;
-    forAll(solModels_, phasei)
+    scalar resS = 0;
+    forAll(solidificationModels_, phasei)
     {
-        res1 = max(res1, solModels_[phasei].correct());
+        resS = max(resS, solidificationModels_[phasei].correct());
     }
 
-    scalar res2 = 0;
-    forAll(evaModels_, phasei)
+    scalar resE = 0;
+    forAll(evaporationModels_, phasei)
     {
-        res2 = max(res2, evaModels_[phasei].correct());
+        resE = max(resE, evaporationModels_[phasei].correct());
     }
 
-    Info<< "resT = " << res0 << " , "
-        << "resS = " << res1 << " , "
-        << "resE = " << res2 << endl;
+    Info<< "resT = " << resT << " , "
+        << "resS = " << resS << " , "
+        << "resE = " << resE << endl;
 
-    // return maximum
-    return max(res1, res2);
+    return max(resS, resE);
 }
 
 

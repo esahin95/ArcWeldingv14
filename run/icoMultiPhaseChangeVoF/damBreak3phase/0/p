@@ -2,55 +2,52 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Version:  13
+    \\  /    A nd           | Version:  14
      \\/     M anipulation  |
 \*---------------------------------------------------------------------------*/
 FoamFile
 {
-    format      binary;
+    format      ascii;
     class       volScalarField;
     location    "0";
-    object      T.oil;
+    object      p;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-dimensions      [0 0 0 1 0 0 0];
+dimensions      [pressure];
 
-internalField   uniform 293;
+internalField   uniform 1e5;
 
 boundaryField
 {
-    top
+    leftWall
     {
-        type            inletOutlet;
-        phi             rhoPhi;
-        inletValue      uniform 293;
-        value           uniform 293;
+        type            calculated;
+        value           $internalField;
     }
-    left
+
+    rightWall
     {
-        type            fixedValue;
-        value           uniform 293;
+        type            calculated;
+        value           $internalField;
     }
-    right
+
+    lowerWall
     {
-        type            fixedValue;
-        value           uniform 293;
+        type            calculated;
+        value           $internalField;
     }
-    bottom
+
+    atmosphere
     {
-        type            fixedValue;
-        value           uniform 293;
+        type            calculated;
+        value           $internalField;
     }
-    front
-    {
-        type            empty;
-    }
-    back
+
+    defaultFaces
     {
         type            empty;
     }
 }
-
 
 // ************************************************************************* //

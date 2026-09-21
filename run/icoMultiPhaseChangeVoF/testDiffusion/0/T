@@ -2,54 +2,42 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Version:  10
+    \\  /    A nd           | Version:  14
      \\/     M anipulation  |
 \*---------------------------------------------------------------------------*/
 FoamFile
 {
     format      ascii;
-    class       dictionary;
-    location    "system";
-    object      setFieldsDict;
+    class       volScalarField;
+    location    "0";
+    object      T;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-defaultValues
-{
-    alpha.water 0;
-    alpha.oil 0;
-    alpha.air 1;
-}
+dimensions      [temperature];
 
-zones
+internalField   uniform 293;
+
+boundaryField
 {
-    water
+    "(left|right|bottom)"
     {
-    	type        box;
-
-        box (-1 -1 -1) (0.0005 0.0002 1);
-
-        values
-    	{
-    	    alpha.water 1;
-            alpha.oil 0;
-            alpha.air 0;
-        };
+        type            fixedValue;
+        value           $internalField;
     }
 
-    oil
+    top
     {
-    	type        box;
+        type            inletOutlet;
+        phi             rhoPhi;
+        inletValue      $internalField;
+    }
 
-        box (0.0005 -1 -1) (1 0.0002 1);
-
-        values
-    	{
-    	    alpha.water 0;
-            alpha.oil 1;
-            alpha.air 0;
-        };
+    "(front|back)"
+    {
+        type            empty;
     }
 }
+
 
 // ************************************************************************* //

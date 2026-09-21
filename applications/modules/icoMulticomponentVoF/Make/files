@@ -1,7 +1,6 @@
 multicomponentVoFMixture/multicomponentVoFMixture.C
 
 alphaPredictor.C
-momentumPredictor.C
 thermophysicalPredictor.C
 pressureCorrector.C
 icoMulticomponentVoF.C

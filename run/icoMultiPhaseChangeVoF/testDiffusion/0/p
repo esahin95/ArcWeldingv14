@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Version:  13
+    \\  /    A nd           | Version:  14
      \\/     M anipulation  |
 \*---------------------------------------------------------------------------*/
 FoamFile
@@ -10,32 +10,20 @@ FoamFile
     format      ascii;
     class       volScalarField;
     location    "0";
-    object      alpha.water;
+    object      p;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-dimensions      [];
+dimensions      [pressure];
 
-internalField   uniform 0;
+internalField   uniform 1e5;
 
 boundaryField
 {
-    "(right|left|bottom)"
+    "(top|right|left|bottom)"
     {
-        type            alphaContactAngle;
-        contactAngleProperties
-        {
-            air             { theta0 90; }
-            oil             { theta0 90; }
-        }
-        value           uniform 0;
-    }
-
-    top
-    {
-        type            inletOutlet;
-        inletValue      uniform 0;
-        value           uniform 0;
+        type            calculated;
+        value           $internalField;
     }
 
     "(front|back)"

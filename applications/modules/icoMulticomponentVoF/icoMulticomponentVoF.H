@@ -25,32 +25,45 @@ Class
     Foam::solvers::icoMulticomponentVoF
 
 Description
-    Solver module for the solution of multiple incompressible, non-isothermal
-    immiscible fluids using a VOF (volume of fluid) phase-fraction based
-    interface capturing approach, with optional mesh motion and mesh topology
-    changes including adaptive re-meshing. Selection of phases can be set to
-    be missible with zero surface tension and interface compression, but
-    non-zero diffusivity.
+    Solver module for multiple incompressible, non-isothermal fluids using a
+    VOF (volume of fluid) phase-fraction based interface capturing approach,
+    with optional mesh motion and mesh topology changes including adaptive
+    re-meshing. Phases can be declared miscible: between miscible phases there
+    is no surface tension and no interface compression, but mass diffusion.
 
     The momentum and other fluid properties are of the "mixture" and a single
-    momentum equation is solved.
-
-    A mixture approach for momentum transport is provided in which a single
-    laminar, RAS or LES model is selected to model the momentum stress.
+    momentum equation is solved. A mixture approach for momentum transport is
+    provided in which a single laminar, RAS or LES model is selected to model
+    the momentum stress.
 
     Uses the flexible PIMPLE (PISO-SIMPLE) solution for time-resolved and
     pseudo-transient and steady simulations.
 
-    Energy equation is based on icoReactingMultiphaseInterFoam with mixture
-    averaged binary mass diffusion coefficients and diffusion fluxes from
-    generalized Fick's law. Alpha predictor and pressure corrector are taken
+    The temperature equation is based on icoReactingMultiphaseInterFoam. The
+    mass diffusion between miscible phases uses mixture-averaged diffusion
+    coefficients and Fick's law, and is added explicitly to the phase
+    fraction fluxes. The alpha predictor and pressure corrector are taken
     from incompressibleMultiphaseVoF.
+
+    The time step is limited by the Courant numbers of the base solver and by
+    two diffusion numbers, given in the controlDict:
+    \table
+        Property | Description                                 | Required
+        maxEnCo  | Maximum thermal diffusion number            | yes
+        maxDiCo  | Maximum mass diffusion number               | yes
+    \endtable
+
+    The continuity error is written as the field \c contErr.
 
 SourceFiles
     icoMulticomponentVoF.C
+    alphaPredictor.C
+    thermophysicalPredictor.C
+    pressureCorrector.C
 
 See also
     Foam::solvers::multiphaseVoFSolver
+    Foam::multicomponentVoFMixture
 
 \*---------------------------------------------------------------------------*/
 
@@ -70,7 +83,7 @@ namespace solvers
 {
 
 /*---------------------------------------------------------------------------*\
-                          Class icoMulticomponentVoF Declaration
+                    Class icoMulticomponentVoF Declaration
 \*---------------------------------------------------------------------------*/
 
 class icoMulticomponentVoF
@@ -82,7 +95,7 @@ protected:
 
     // Phase properties
 
-        //- The compressible two-phase mixture
+        //- The multicomponent mixture
         multicomponentVoFMixture& mixture;
 
         //- Reference to the phases
@@ -94,7 +107,7 @@ protected:
         //- Reference to the mixture static pressure field
         volScalarField& p;
 
-        //- Heat capacities
+        //- Volumetric heat capacity of the mixture
         const volScalarField& rhoCp;
 
 
@@ -106,7 +119,7 @@ protected:
 
     // Kinematic properties
 
-        //- Phase mass fluxes
+        //- Phase mass fluxes, also looked up by the phase change models
         PtrList<surfaceScalarField> alphaRhoPhis_;
 
 
@@ -119,9 +132,9 @@ protected:
         compressible::momentumTransportModel& momentumTransport;
 
 
-    // Cached temporary fields
+    // Diagnostics
 
-        //- Continuity error
+        //- Continuity error, written for post-processing
         tmp<volScalarField> contErr;
 
 
@@ -154,13 +167,21 @@ protected:
         }
 
         //- Return the momentum equation stress term
-        virtual tmp<fvVectorMatrix> divDevTau(volVectorField& U);
+        virtual tmp<fvVectorMatrix> divDevTau(volVectorField& U)
+        {
+            return momentumTransport.divDevTau(U);
+        }
 
         //- Solve for the phase-fractions
         virtual void alphaPredictor();
 
-        //- Return the interface surface tension force for the momentum equation
+        //- Return the interface surface tension force for the momentum
+        //  equation. Overridden as the multicomponent mixture's force, which
+        //  omits the miscible interfaces, hides that of multiphaseVoFMixture.
         virtual tmp<surfaceScalarField> surfaceTensionForce() const;
+
+        //- Return the temperature equation without source terms
+        tmp<fvScalarMatrix> temperatureEqn();
 
 
 private:
@@ -183,10 +204,7 @@ public:
         icoMulticomponentVoF(fvMesh& mesh);
 
         //- Disallow default bitwise copy construction
-        icoMulticomponentVoF
-        (
-            const icoMulticomponentVoF&
-        ) = delete;
+        icoMulticomponentVoF(const icoMulticomponentVoF&) = delete;
 
 
     //- Destructor
@@ -204,14 +222,10 @@ public:
         //- Predict the momentum transport
         virtual void momentumTransportPredictor();
 
-        //- Predict thermophysical transport
+        //- Predict thermophysical transport; does nothing
         virtual void thermophysicalTransportPredictor();
 
-        //- Construct and optionally solve the momentum equation
-        virtual void momentumPredictor();
-
-        //- Construct and solve the energy equation,
-        //  convert to temperature
+        //- Construct and solve the temperature equation
         //  and update thermophysical and transport properties
         virtual void thermophysicalPredictor();
 
@@ -221,7 +235,7 @@ public:
         //- Correct the momentum transport
         virtual void momentumTransportCorrector();
 
-        //- Correct the thermophysical transport
+        //- Correct the thermophysical transport; does nothing
         virtual void thermophysicalTransportCorrector();
 
 

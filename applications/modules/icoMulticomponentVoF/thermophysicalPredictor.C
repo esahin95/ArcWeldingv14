@@ -24,45 +24,43 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "icoMulticomponentVoF.H"
-#include "fvcMeshPhi.H"
 #include "fvcDdt.H"
 #include "fvmDiv.H"
-#include "fvmLaplacian.H"
 #include "fvmSup.H"
+#include "fvmLaplacian.H"
 
-// * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
+// * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
 
-void Foam::solvers::icoMulticomponentVoF::thermophysicalPredictor()
+Foam::tmp<Foam::fvScalarMatrix>
+Foam::solvers::icoMulticomponentVoF::temperatureEqn()
 {
     volScalarField& T = mixture.T();
 
+    // Heat capacity flux
     const surfaceScalarField rhoPhiCp
     (
         "rhoPhiCp",
         rhoPhi*fvc::interpolate(rhoCp/mixture.rho())
     );
 
-    /*
-    fvScalarMatrix TEqn
-    (
-        fvm::ddt(rho, T) + fvm::div(rhoPhi, T) - fvm::Sp(contErr(), T)
-      - fvm::laplacian(mixture.alphaEff(momentumTransport.nut()), T)
-      + (
-            fvc::div(fvc::absolute(phi, U), p)()() // - contErr()/rho*p
-          + (fvc::ddt(rho, K) + fvc::div(rhoPhi, K))()()
-          - (U()&(fvModels().source(rho, U)&U)()) - contErr()*K
-        )*mixture.rCv()()
-     ==
-        fvModels().source(rho, T)
-    );
-    */
-    fvScalarMatrix TEqn
+    return
     (
         fvm::ddt(rhoCp, T) + fvm::div(rhoPhiCp, T)
       - fvm::Sp(fvc::ddt(rhoCp) + fvc::div(rhoPhiCp), T)
       - fvm::laplacian(mixture.kappaEff(momentumTransport.nut()), T)
-      ==
-        fvModels().source(rhoCp, T)
+    );
+}
+
+
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
+void Foam::solvers::icoMulticomponentVoF::thermophysicalPredictor()
+{
+    volScalarField& T = mixture.T();
+
+    fvScalarMatrix TEqn
+    (
+        temperatureEqn() == fvModels().source(rhoCp, T)
     );
 
     TEqn.relax();

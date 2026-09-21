@@ -27,8 +27,6 @@ License
 #include "subCycle.H"
 #include "CMULES.H"
 #include "fvcFlux.H"
-#include "fvcSnGrad.H"
-#include "fvcMeshPhi.H"
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
@@ -70,10 +68,11 @@ void Foam::solvers::icoMulticomponentVoF::alphaSolve()
         {
             compressibleVoFphase& alpha2 = phases[phasej];
 
-            if
-            (
-                &alpha2 == &alpha || mixture.missible(phasei, phasej)
-            ) continue;
+            // No interface compression between miscible phases
+            if (&alpha2 == &alpha || mixture.miscible(phasei, phasej))
+            {
+                continue;
+            }
 
             surfaceScalarField phir(phic*mixture.nHatf(alpha, alpha2));
 
@@ -85,7 +84,7 @@ void Foam::solvers::icoMulticomponentVoF::alphaSolve()
             );
         }
 
-        // Add diffusion mass flux
+        // Add the mass diffusion flux
         alphaPhi += mixture.j(phasei);
 
         // Limit alphaPhi for each phase
@@ -120,8 +119,6 @@ void Foam::solvers::icoMulticomponentVoF::alphaSolve()
         mesh,
         dimensionedScalar(dimless, 0)
     );
-
-    const volScalarField divU(fvc::div(fvc::absolute(phi, U)));
 
     forAll(phases, phasei)
     {
@@ -197,7 +194,7 @@ void Foam::solvers::icoMulticomponentVoF::alphaPredictor()
                 (
                     IOobject::groupName("alphaRhoPhiSum", alpha.name()),
                     mesh,
-                    dimensionedScalar(rhoPhi.dimensions(), 0.0)
+                    dimensionedScalar(rhoPhi.dimensions(), 0)
                 )
             );
         }

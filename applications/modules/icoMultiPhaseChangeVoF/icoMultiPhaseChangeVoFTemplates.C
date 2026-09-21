@@ -28,14 +28,14 @@ License
 template<class Type>
 void Foam::solvers::icoMultiPhaseChangeVoF::addSup(fvMatrix<Type>& eqn) const
 {
-    forAll(solModels_, phasei)
+    forAll(solidificationModels_, phasei)
     {
-        solModels_[phasei].addSup(eqn);
+        solidificationModels_[phasei].addSup(eqn);
     }
 
-    forAll(evaModels_, phasei)
+    forAll(evaporationModels_, phasei)
     {
-        evaModels_[phasei].addSup(eqn);
+        evaporationModels_[phasei].addSup(eqn);
     }
 }
 

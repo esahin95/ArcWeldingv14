@@ -2,34 +2,26 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Version:  13
+    \\  /    A nd           | Version:  14
      \\/     M anipulation  |
 \*---------------------------------------------------------------------------*/
 FoamFile
 {
     format      ascii;
-    class       volScalarField;
-    object      p;
+    class       dictionary;
+    location    "system";
+    object      configDict;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-dimensions      [1 -1 -2 0 0 0 0];
-
-internalField   uniform 1e5;
-
-boundaryField
+DebugSwitches
 {
-    "(top|right|left|bottom)"
-    {
-        type            calculated;
-        value           $internalField;
-    }
-
-    "(front|back)"
-    {
-        type            empty;
-    }
+    MULES                       1;
 }
 
+OptimisationSwitches
+{
+    fileHandler                 collated;
+}
 
 // ************************************************************************* //

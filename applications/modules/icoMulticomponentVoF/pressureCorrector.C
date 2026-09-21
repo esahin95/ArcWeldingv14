@@ -33,7 +33,6 @@ License
 #include "fvcDdt.H"
 #include "fvcDiv.H"
 #include "fvcSnGrad.H"
-#include "fvcSup.H"
 #include "fvcReconstruct.H"
 #include "fvmLaplacian.H"
 
@@ -141,6 +140,8 @@ void Foam::solvers::icoMulticomponentVoF::pressureCorrector()
             p_rgh = p - rho*buoyancy.gh;
         }
 
+        // Unlike incompressibleMultiphaseVoF, update the mixture properties
+        // after each pressure correction
         mixture.correct();
     }
 

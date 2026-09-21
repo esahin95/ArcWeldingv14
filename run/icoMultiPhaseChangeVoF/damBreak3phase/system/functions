@@ -9,12 +9,13 @@ FoamFile
 {
     format      ascii;
     class       dictionary;
-    location    "constant";
-    object      momentumTransport;
+    location    "system";
+    object      functions;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-simulationType  laminar;
+#includeFunc cellMax(name=cellMax, T, contErr, log=yes)
+#includeFunc cellMin(name=cellMin, T, contErr, log=yes)
 
 
 // ************************************************************************* //
