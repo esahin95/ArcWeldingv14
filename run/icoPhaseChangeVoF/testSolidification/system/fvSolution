@@ -74,6 +74,7 @@ PIMPLE
 
     //pRefCell    0;
     //pRefValue   1e5;
+    thermoTol                1e-4;
 }
 
 

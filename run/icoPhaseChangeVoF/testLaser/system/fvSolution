@@ -19,7 +19,7 @@ solvers
     "alpha.water.*"
     {
         nCorrectors     1;
-        nSubCycles      3;
+        nSubCycles      polynomial (0 4);
 
         MULES
         {
@@ -72,9 +72,9 @@ solvers
 
     p_rgh
     {
-        solver          PCG;
-        preconditioner  DIC;
-        tolerance       1e-8;
+        solver          GAMG;
+        smoother        DIC;
+        tolerance       1e-7;
         relTol          0.05;
     }
 
@@ -103,7 +103,7 @@ PIMPLE
     momentumPredictor no;
     transonic       no;
     nOuterCorrectors 1;
-    nCorrectors     3;
+    nCorrectors     2;
     nNonOrthogonalCorrectors 0;
 
     //flow false;

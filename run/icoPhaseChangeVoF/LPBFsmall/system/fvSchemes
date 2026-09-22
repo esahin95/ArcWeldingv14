@@ -16,14 +16,7 @@ FoamFile
 
 ddtSchemes
 {
-    default         CrankNicolson
-    ocCoeff
-    {
-        type scale;
-        scale linearRamp;
-        duration 1e-8;
-        value 0.0;
-    };
+    default         Euler;
 }
 
 gradSchemes

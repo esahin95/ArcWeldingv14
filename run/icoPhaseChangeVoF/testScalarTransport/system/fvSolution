@@ -46,8 +46,8 @@ solvers
 
     p_rgh
     {
-        solver          PCG;
-        preconditioner  DIC;
+        solver          GAMG;
+        smoother        DIC;
         tolerance       1e-7;
         relTol          0.05;
     }
@@ -55,7 +55,6 @@ solvers
     p_rghFinal
     {
         $p_rgh;
-        tolerance       1e-7;
         relTol          0;
     }
 
@@ -85,7 +84,7 @@ solvers
 PIMPLE
 {
     momentumPredictor no;
-    nCorrectors     3;
+    nCorrectors     2;
     nNonOrthogonalCorrectors 0;
 }
 
