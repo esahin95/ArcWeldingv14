@@ -37,5 +37,5 @@ def func(dir):
     lines[1].set_ydata(0.5 - (coef*np.exp(-w**2*D*t))@C)
 
     return lines
-ani = FuncAnimation(fig, func, timeDirs, interval=200)
+ani = FuncAnimation(fig, func, timeDirs, interval=600)
 ani.save("animation.mp4")
